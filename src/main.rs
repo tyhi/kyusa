@@ -156,7 +156,7 @@ fn main() {
         actix_web::App::new()
             .data(db.clone())
             .data(server_settings.clone())
-            .data(awmp::Parts::configure(|cfg| cfg.with_file_limit(1_000_000)))
+            .data(awmp::Parts::configure(|cfg| cfg.with_temp_dir("./tmp")))
             .route("/u", actix_web::web::post().to(upload))
             .route("/d/{delete_key}", web::get().to(delete))
             .service(web::resource("/{folder}/{file}").route(web::get().to(serve)))
