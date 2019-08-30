@@ -1,0 +1,5 @@
+{
+  "website_name": "localhost:3000",
+  "api_keys": ["123", "321"],
+  "https": true
+}
