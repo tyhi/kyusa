@@ -103,7 +103,7 @@ fn gen_upload_file(file_name: &String, ext: &String) -> NamedReturn {
         }
     }
 
-    loop {:q
+    loop {
         let random_name = nanoid::generate(6);
         let folder_dir = nanoid::generate(2);
 
