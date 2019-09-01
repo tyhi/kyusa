@@ -1,3 +1,4 @@
+use crate::built_info;
 use actix_web::{web, HttpResponse};
 use serde::{Deserialize, Serialize};
 
@@ -5,11 +6,6 @@ use serde::{Deserialize, Serialize};
 struct Stats {
     files: usize,
     version: String,
-}
-
-pub mod built_info {
-    // The file has been placed there by the build script.
-    include!(concat!(env!("OUT_DIR"), "/built.rs"));
 }
 
 pub fn stats(database: web::Data<sled::Db>) -> HttpResponse {

@@ -4,18 +4,21 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::ops::Deref;
 
+use crate::ServerSettings;
+
 #[derive(Serialize, Deserialize)]
 struct UploadResp {
     url: String,
     delete_url: String,
 }
 
-pub struct ServerSettings {
-    pub api_keys: Vec<String>,
-    pub admin_keys: Vec<String>,
-    pub website_name: String,
-    pub https: bool,
+struct NamedReturn {
+    new_path: String,
+    uri: String,
+    ffn: String,
 }
+
+const RANDOM_FILE_EXT: &'static [&str] = &["png", "jpeg"];
 
 pub fn upload(
     mut parts: awmp::Parts,
@@ -30,59 +33,92 @@ pub fn upload(
         .and_then(|f| f.persist("./uploads").ok())
         .unwrap_or_default();
 
-    let (new_path, uri, ffn) = loop {
-        let file_name = nanoid::generate(6);
+    let ext = file_parts
+        .extension()
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_ascii_lowercase();
+
+    let filename = file_parts
+        .file_stem()
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_string();
+
+    let file_names = gen_upload_file(&filename, &ext);
+
+    fs::rename(
+        file_parts.display().to_string(),
+        file_names.new_path.clone(),
+    )
+    .unwrap();
+
+    let del_key = nanoid::simple();
+
+    let ins = dbu::generate_insert_binary(
+        file_names.new_path,
+        del_key.clone(),
+        request.connection_info().deref(),
+    )
+    .unwrap();
+
+    database
+        .insert(file_names.ffn.clone().into_bytes(), ins)
+        .unwrap();
+
+    let resp_json = UploadResp {
+        url: format!(
+            "https://{}{}.{}",
+            settings.website_name, file_names.uri, ext
+        ),
+        delete_url: format!(
+            "https://{}/d{}.{}?del={}",
+            settings.website_name, file_names.uri, ext, del_key
+        ),
+    };
+
+    Ok(HttpResponse::Ok().json(&resp_json))
+}
+
+fn gen_upload_file(file_name: &String, ext: &String) -> NamedReturn {
+    if !RANDOM_FILE_EXT.iter().any(|x| x == &ext.as_str()) {
+        loop {
+            let folder_dir = nanoid::generate(2);
+
+            let p = format!("./uploads/{}/{}", folder_dir, file_name);
+
+            if !std::path::Path::new(&p).exists() {
+                if !std::path::Path::new(&format!("./uploads/{}", folder_dir)).exists() {
+                    fs::create_dir_all(format!("./uploads/{}", folder_dir)).unwrap();
+                }
+
+                return NamedReturn {
+                    new_path: p,
+                    uri: format!("/{}/{}", folder_dir, file_name),
+                    ffn: format!("{}{}", folder_dir, file_name),
+                };
+            }
+        }
+    }
+
+    loop {:q
+        let random_name = nanoid::generate(6);
         let folder_dir = nanoid::generate(2);
 
-        let p = format!(
-            "./uploads/{}/{}.{}",
-            folder_dir,
-            file_name,
-            file_parts.extension().unwrap().to_str().unwrap()
-        );
+        let p = format!("./uploads/{}/{}.{}", folder_dir, random_name, ext);
 
         if !std::path::Path::new(&p).exists() {
             if !std::path::Path::new(&format!("./uploads/{}", folder_dir)).exists() {
                 fs::create_dir_all(format!("./uploads/{}", folder_dir)).unwrap();
             }
-            break (
-                p,
-                format!("/{}/{}", folder_dir, file_name),
-                format!(
-                    "{}{}.{}",
-                    folder_dir,
-                    file_name,
-                    file_parts.extension().unwrap().to_str().unwrap()
-                ),
-            );
+
+            return NamedReturn {
+                new_path: p,
+                uri: format!("/{}/{}", folder_dir, random_name),
+                ffn: format!("{}{}.{}", folder_dir, random_name, ext),
+            };
         }
-    };
-
-    fs::rename(file_parts.display().to_string(), new_path.clone()).unwrap();
-
-    let del_key = nanoid::simple();
-
-    let ins =
-        dbu::generate_insert_binary(new_path, del_key.clone(), request.connection_info().deref())
-            .unwrap();
-
-    database.insert(ffn.clone().into_bytes(), ins).unwrap();
-
-    let resp_json = UploadResp {
-        url: format!(
-            "https://{}{}.{}",
-            settings.website_name,
-            uri,
-            file_parts.extension().unwrap().to_str().unwrap()
-        ),
-        delete_url: format!(
-            "https://{}/d{}.{}?del={}",
-            settings.website_name,
-            uri,
-            file_parts.extension().unwrap().to_str().unwrap(),
-            del_key
-        ),
-    };
-
-    Ok(HttpResponse::Ok().json(&resp_json))
+    }
 }
