@@ -1,7 +1,7 @@
 use crate::dbu;
 use actix_web::{web, HttpResponse};
 use serde::Deserialize;
-use std::fs;
+use std::{fs, path};
 
 #[derive(Deserialize)]
 pub struct FilePath {
@@ -27,6 +27,7 @@ pub fn delete(
             return HttpResponse::Unauthorized().body("this is not a valid file to delete");
         }
     };
+
     let data: dbu::FileMetadata = bincode::deserialize(&binc[..]).unwrap();
 
     if del.del != data.del_key {
@@ -37,7 +38,7 @@ pub fn delete(
         .remove(format!("{}{}", path.folder, path.file).into_bytes())
         .unwrap();
 
-    let path = std::path::Path::new(&data.file_path);
+    let path = path::Path::new(&data.file_path);
 
     fs::remove_file(path).unwrap();
 

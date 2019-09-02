@@ -58,9 +58,9 @@ pub fn upload(
     let del_key = nanoid::simple();
 
     let ins = dbu::generate_insert_binary(
-        file_names.new_path,
-        del_key.clone(),
-        request.connection_info().deref(),
+        &file_names.new_path,
+        &del_key,
+        &request.connection_info().deref(),
     )
     .unwrap();
 
@@ -68,7 +68,7 @@ pub fn upload(
         .insert(file_names.ffn.clone().into_bytes(), ins)
         .unwrap();
 
-    let resp_json = UploadResp {
+    Ok(HttpResponse::Ok().json(&UploadResp {
         url: format!(
             "https://{}{}.{}",
             settings.website_name, file_names.uri, ext
@@ -77,9 +77,7 @@ pub fn upload(
             "https://{}/d{}.{}?del={}",
             settings.website_name, file_names.uri, ext, del_key
         ),
-    };
-
-    Ok(HttpResponse::Ok().json(&resp_json))
+    }))
 }
 
 fn gen_upload_file(file_name: &String, ext: &String) -> NamedReturn {
