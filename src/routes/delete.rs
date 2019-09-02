@@ -24,14 +24,14 @@ pub fn delete(
     {
         Some(e) => e,
         None => {
-            return HttpResponse::Unauthorized().body("this is not a valid file to delete");
+            return HttpResponse::Unauthorized().body("this file does not exist");
         }
     };
 
     let data: dbu::FileMetadata = bincode::deserialize(&binc[..]).unwrap();
 
     if del.del != data.del_key {
-        return HttpResponse::Unauthorized().body("invaild delete key");
+        return HttpResponse::Unauthorized().body("invalid delete key");
     }
 
     database
