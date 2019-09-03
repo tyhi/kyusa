@@ -33,12 +33,14 @@ pub fn upload(
         .and_then(|f| f.persist("./uploads").ok())
         .unwrap_or_default();
 
-    let ext = file_parts
-        .extension()
-        .unwrap()
-        .to_str()
-        .unwrap()
-        .to_ascii_lowercase();
+    let ext = match file_parts.extension().unwrap().to_str() {
+        Some(e) => e.to_lowercase(),
+        None => {
+            return Ok(
+                HttpResponse::NotAcceptable().body("files without extensions are not allowed.")
+            )
+        }
+    };
 
     let filename = file_parts
         .file_stem()
