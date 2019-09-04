@@ -1,5 +1,5 @@
 use crate::dbu;
-use actix_web::{web, HttpResponse};
+use actix_web::{error, web, Error, HttpResponse};
 use serde::Deserialize;
 use std::{fs, path};
 
@@ -17,21 +17,18 @@ pub fn delete(
     path: web::Path<FilePath>,
     del: web::Query<DeleteFile>,
     database: web::Data<sled::Db>,
-) -> HttpResponse {
-    let binc = match database
-        .get(format!("{}{}", path.folder, path.file))
-        .unwrap()
-    {
-        Some(e) => e,
+) -> Result<HttpResponse, Error> {
+    let binc = match database.get(format!("{}{}", path.folder, path.file)).unwrap() {
+        Some(binary) => binary,
         None => {
-            return HttpResponse::Unauthorized().body("this file does not exist");
+            return Err(error::ErrorNotFound("this file does not exist"));
         }
     };
 
     let data: dbu::FileMetadata = bincode::deserialize(&binc[..]).unwrap();
 
     if del.del != data.del_key {
-        return HttpResponse::Unauthorized().body("invalid delete key");
+        return Err(error::ErrorUnauthorized("invalid delete key"));
     }
 
     database
@@ -40,11 +37,11 @@ pub fn delete(
 
     let path = path::Path::new(&data.file_path);
 
-    fs::remove_file(path).unwrap();
+    fs::remove_file(path)?;
 
     if path.parent().unwrap().read_dir().unwrap().next().is_none() {
         fs::remove_dir(path.parent().unwrap()).unwrap();
     }
 
-    HttpResponse::Ok().body("file deleted")
+    Ok(HttpResponse::Ok().body("file deleted"))
 }

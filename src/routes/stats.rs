@@ -1,8 +1,8 @@
 use crate::built_info;
 use actix_web::{web, HttpResponse};
-use serde::{Deserialize, Serialize};
+use serde::{Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize)]
 struct Stats {
     files: usize,
     version: String,

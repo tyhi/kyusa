@@ -1,6 +1,6 @@
 use actix_web::{web, FromRequest};
 use routes::{delete, serve, stats, upload};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize};
 use sled::Db;
 use std::fs;
 
@@ -12,7 +12,7 @@ pub mod built_info {
     include!(concat!(env!("OUT_DIR"), "/built.rs"));
 }
 
-#[derive(Serialize, Clone, Deserialize)]
+#[derive(Clone, Deserialize)]
 pub struct ServerSettings {
     pub api_keys: Vec<String>,
     pub admin_keys: Vec<String>,
