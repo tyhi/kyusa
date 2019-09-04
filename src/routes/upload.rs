@@ -47,7 +47,7 @@ pub fn upload(
 
     let file_names = gen_upload_file(filename, &ext);
 
-    fs::rename(file_parts.display().to_string(), &file_names.new_path).unwrap();
+    fs::rename(file_parts.display().to_string(), &file_names.new_path)?;
 
     let del_key = nanoid::simple();
 
