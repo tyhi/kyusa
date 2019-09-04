@@ -83,31 +83,15 @@ pub fn upload(
 }
 
 fn gen_upload_file(file_name: &String, ext: &String) -> NamedReturn {
-    if !RANDOM_FILE_EXT.iter().any(|x| x == &ext.as_str()) {
-        loop {
-            let folder_dir = nanoid::generate(2);
-
-            let p = format!("./uploads/{}/{}", folder_dir, file_name);
-
-            if !std::path::Path::new(&p).exists() {
-                if !std::path::Path::new(&format!("./uploads/{}", folder_dir)).exists() {
-                    fs::create_dir_all(format!("./uploads/{}", folder_dir)).unwrap();
-                }
-
-                return NamedReturn {
-                    new_path: p,
-                    uri: format!("/{}/{}", folder_dir, file_name),
-                    ffn: format!("{}{}", folder_dir, file_name),
-                };
-            }
-        }
-    }
-
     loop {
-        let random_name = nanoid::generate(6);
+        let name = match RANDOM_FILE_EXT.iter().any(|x| x == &ext.as_str()) {
+            false => file_name.to_owned(),
+            true => nanoid::generate(6),
+        };
+
         let folder_dir = nanoid::generate(2);
 
-        let p = format!("./uploads/{}/{}.{}", folder_dir, random_name, ext);
+        let p = format!("./uploads/{}/{}.{}", folder_dir, name, ext);
 
         if !std::path::Path::new(&p).exists() {
             if !std::path::Path::new(&format!("./uploads/{}", folder_dir)).exists() {
@@ -116,8 +100,8 @@ fn gen_upload_file(file_name: &String, ext: &String) -> NamedReturn {
 
             return NamedReturn {
                 new_path: p,
-                uri: format!("/{}/{}", folder_dir, random_name),
-                ffn: format!("{}{}.{}", folder_dir, random_name, ext),
+                uri: format!("/{}/{}", folder_dir, name),
+                ffn: format!("{}{}.{}", folder_dir, name, ext),
             };
         }
     }
