@@ -1,6 +1,17 @@
 {
-  "website_name": "localhost:3000",
-  "api_keys": ["123", "321"],
-  "admin_keys": ["a123", "b123"],
-  "https": true
+  "api_keys": [
+    "123",
+    "321"
+  ],
+  "admin_keys": [
+    "a123",
+    "b123"
+  ],
+  "website_name": "eeeee.rs",
+  "https": true,
+  "cloudflare": {
+    "enabled": true,
+    "cf_key": "uggSwNfmItk20wzj7CuQgaiZjzwYDWedLuKTSrZp",
+    "zone": null
+  }
 }

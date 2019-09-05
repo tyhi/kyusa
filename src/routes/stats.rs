@@ -1,6 +1,6 @@
 use crate::built_info;
 use actix_web::{web, HttpResponse};
-use serde::{Serialize};
+use serde::Serialize;
 
 #[derive(Serialize)]
 struct Stats {

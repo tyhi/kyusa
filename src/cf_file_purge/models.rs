@@ -86,3 +86,8 @@ pub enum NameServer {
     #[serde(rename = "oswald.ns.cloudflare.com")]
     OswaldNsCloudflareCom,
 }
+
+#[derive(Serialize)]
+pub struct PurgeFiles<'a> {
+    pub files: Vec<&'a String>,
+}

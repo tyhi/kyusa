@@ -1,6 +1,6 @@
 use crate::dbu;
 use actix_web::{error, web, Error, HttpRequest, HttpResponse};
-use serde::{Serialize};
+use serde::Serialize;
 use std::{fs, ops::Deref};
 
 use crate::ServerSettings;

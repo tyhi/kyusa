@@ -1,22 +1,39 @@
-use crate::cf_file_purge::models::Zones;
+use crate::cf_file_purge::models::{PurgeFiles, Zones};
 use isahc::prelude::*;
 
 pub mod models;
 
-pub fn get_domain_id(
-    domain: &String,
-    cf_api: &String,
-) -> Result<String, Box<dyn std::error::Error>> {
-    println!("deaths");
+pub fn get_domain_id(domain: &String, cf_api: &String) -> Option<String> {
     let resp = Request::get("https://api.cloudflare.com/client/v4/zones")
-        .header(
-            "Authorization",
-            "Bearer p6kAhtSnZo0vMasmnydv2Nz83AZVUcnt2YDJUfmo",
-        )
-        .body("")?
-        .send()?
-        .json::<Zones>()?;
+        .header("Authorization", format!("Bearer {}", cf_api))
+        .body(())
+        .unwrap()
+        .send()
+        .unwrap()
+        .json::<Zones>()
+        .unwrap();
 
-    println!("{:?}", resp.result_info.count);
-    Ok(String::new())
+    for x in resp.result.iter() {
+        if &x.name == domain {
+            return Some(x.id.clone());
+        }
+    }
+    None
+}
+
+pub fn purge_file(zone: &String, url: &String, key: &String) -> Result<(), ()> {
+    let files = PurgeFiles { files: vec![url] };
+    let resp = Request::post(format!(
+        "https://api.cloudflare.com/client/v4/zones/{}/purge_cache",
+        zone
+    ))
+    .header("Authorization", format!("Bearer {}", key))
+    .header("content-type", "application/json")
+    .body(serde_json::to_vec(&files).unwrap())
+    .unwrap()
+    .send()
+    .unwrap();
+
+    println!("{:?}", resp.status());
+    Ok(())
 }
