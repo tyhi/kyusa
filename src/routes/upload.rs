@@ -26,7 +26,7 @@ pub fn upload(
     request: HttpRequest,
 ) -> Result<HttpResponse, Error> {
     let file_parts = match parts.files.remove("file").pop() {
-        Some(e) => e.persist("./uploads").ok().unwrap(),
+        Some(e) => e.persist("./uploads").ok().expect("wtf idiot man"),
         None => {
             return Err(error::ErrorBadRequest(
                 "no file was included with multipart post",
