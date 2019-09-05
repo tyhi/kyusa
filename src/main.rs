@@ -1,9 +1,10 @@
 use actix_web::{web, FromRequest};
 use routes::{delete, serve, stats, upload};
-use serde::{Deserialize};
+use serde::Deserialize;
 use sled::Db;
 use std::fs;
 
+mod cf_file_purge;
 mod dbu;
 mod routes;
 
@@ -30,6 +31,9 @@ fn main() {
     }
     let config_json = fs::File::open("./config.json").unwrap();
     let server_settings: ServerSettings = serde_json::from_reader(config_json).unwrap();
+
+    cf_file_purge::get_domain_id(&server_settings.website_name, &server_settings.website_name)
+        .unwrap();
 
     if !std::path::Path::new("./uploads").exists() {
         std::fs::create_dir_all("./uploads").unwrap();
