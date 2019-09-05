@@ -10,6 +10,7 @@
   "website_name": "eeeee.rs",
   "https": true,
   "cloudflare": {
+    "domain": "",
     "enabled": true,
     "cf_key": "uggSwNfmItk20wzj7CuQgaiZjzwYDWedLuKTSrZp",
     "zone": null

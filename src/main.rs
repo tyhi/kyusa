@@ -24,6 +24,7 @@ pub struct ServerSettings {
 
 #[derive(Clone, Deserialize, Serialize)]
 pub struct CloudFlareSettings {
+    pub domain: String,
     pub enabled: bool,
     pub cf_key: String,
     pub zone: Option<String>,
@@ -44,7 +45,7 @@ fn main() {
         Some(e) => Some(e),
         None => Some(
             cf_file_purge::get_domain_id(
-                &server_settings.website_name,
+                &server_settings.cloudflare.domain,
                 &server_settings.cloudflare.cf_key,
             )
             .expect("unable to find cloudflare zone double check api key and website name"),
