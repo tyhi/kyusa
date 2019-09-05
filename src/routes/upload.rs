@@ -25,14 +25,13 @@ pub fn upload(
     settings: web::Data<ServerSettings>,
     request: HttpRequest,
 ) -> Result<HttpResponse, Error> {
-    let file_parts = match parts.files.remove("file").pop() {
-        Some(e) => e.persist("./uploads").ok().expect("wtf idiot man"),
-        None => {
-            return Err(error::ErrorBadRequest(
-                "no file was included with multipart post",
-            ))
-        }
-    };
+    let file_parts = parts
+        .files
+        .remove("file")
+        .pop()
+        .and_then(|f| f.persist("./uploads").ok())
+        .unwrap_or_default();
+
 
     let ext = match file_parts.extension().unwrap().to_str() {
         Some(e) => e.to_lowercase(),
