@@ -17,6 +17,13 @@ nanoid = "0.2.0"
 actix-files = "0.1.4"
 serde_json = "1.0.40"
 chrono = {version = "0.4.7", features = ["serde"]}
+log = "0.4.8"
+env_logger = "0.6.2"
+http = "0.1.18"
+
+[dependencies.isahc]
+version = "0.7.1"
+features = ["json"]
 
 [build-dependencies]
 built = "0.3.2"

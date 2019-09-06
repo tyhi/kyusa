@@ -1,6 +1,6 @@
 use crate::dbu;
 use actix_web::{error, web, Error, HttpRequest, HttpResponse};
-use serde::{Serialize};
+use serde::Serialize;
 use std::{fs, ops::Deref};
 
 use crate::ServerSettings;
@@ -26,7 +26,14 @@ pub fn upload(
     request: HttpRequest,
 ) -> Result<HttpResponse, Error> {
     let file_parts = match parts.files.remove("file").pop() {
-        Some(e) => e.persist("./uploads").ok().unwrap(),
+        Some(e) => match e.persist("./uploads").ok() {
+            Some(e) => e,
+            None => {
+                return Err(error::ErrorInternalServerError(
+                    "error saving multipart to temp folder",
+                ))
+            }
+        },
         None => {
             return Err(error::ErrorBadRequest(
                 "no file was included with multipart post",
