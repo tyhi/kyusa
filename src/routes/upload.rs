@@ -1,7 +1,7 @@
 use crate::dbu;
-use actix_web::{error, web, Error, HttpRequest, HttpResponse};
+use actix_web::{error, web, Error, HttpResponse};
 use serde::Serialize;
-use std::{fs, ops::Deref};
+use std::{fs};
 
 use crate::ServerSettings;
 
@@ -23,7 +23,6 @@ pub fn upload(
     mut parts: awmp::Parts,
     database: web::Data<sled::Db>,
     settings: web::Data<ServerSettings>,
-    request: HttpRequest,
 ) -> Result<HttpResponse, Error> {
     let file_parts = match parts.files.remove("file").pop() {
         Some(e) => match e.persist("./uploads").ok() {
@@ -58,12 +57,7 @@ pub fn upload(
 
     let del_key = nanoid::simple();
 
-    let ins = dbu::generate_insert_binary(
-        &file_names.new_path,
-        &del_key,
-        &request.connection_info().deref(),
-    )
-    .unwrap();
+    let ins = dbu::generate_insert_binary(&file_names.new_path, &del_key).unwrap();
 
     database.insert(&file_names.ffn.into_bytes(), ins).unwrap();
 

@@ -1,4 +1,3 @@
-use actix_web::dev::ConnectionInfo;
 use bincode::serialize;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -10,10 +9,7 @@ pub struct FileMetadata<'a> {
     pub time_date: DateTime<Utc>,
 }
 
-pub fn generate_insert_binary(
-    filepath: &String,
-    delkey: &String,
-) -> Result<Vec<u8>, &'static str> {
+pub fn generate_insert_binary(filepath: &String, delkey: &String) -> Result<Vec<u8>, &'static str> {
     let metadata = FileMetadata {
         file_path: filepath,
         del_key: delkey,

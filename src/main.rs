@@ -5,6 +5,7 @@ use sled::Db;
 use std::fs;
 
 mod cf_file_purge;
+mod cfg;
 mod dbu;
 mod routes;
 
@@ -35,6 +36,8 @@ fn p404() -> &'static str {
 }
 
 fn main() {
+    cfg::init_cfg();
+
     if !std::path::Path::new("./config.json").exists() {
         log::error!("no config");
     }
