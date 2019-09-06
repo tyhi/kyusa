@@ -70,11 +70,11 @@ fn main() {
         actix_web::App::new()
             .data(db.clone())
             .data(server_settings.clone())
-            .data(awmp::Parts::configure(|cfg| cfg.with_temp_dir("./uploads")))
+            // Not using a defined temp folder caused issues on my arch linux server but not any others.
+            .data(awmp::Parts::configure(|cfg| cfg))
             .route("/u", actix_web::web::post().to(upload::upload))
             .route("/d/{folder}/{file}", web::get().to(delete::delete))
             .route("/stats", web::get().to(stats::stats))
-            // .service(web::resource("/lg/{folder}/{file}").route(web::get().to(looking_glass)))
             .service(web::resource("/{folder}/{file}").route(web::get().to(serve::serve)))
             .default_service(web::resource("").route(web::get().to(p404)))
     })
