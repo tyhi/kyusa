@@ -10,9 +10,9 @@
   "website_name": "eeeee.rs",
   "https": true,
   "cloudflare": {
-    "domain": "",
+    "domain": "tyhi.rs",
     "enabled": true,
     "cf_key": "uggSwNfmItk20wzj7CuQgaiZjzwYDWedLuKTSrZp",
-    "zone": null
+    "zone": "c65a26127cb66300e175d903ccc9e1b9"
   }
 }
