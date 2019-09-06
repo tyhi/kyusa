@@ -7,12 +7,12 @@
     "a123",
     "b123"
   ],
-  "website_name": "eeeee.rs",
+  "website_name": "localhost:3000",
   "https": true,
   "cloudflare": {
-    "domain": "tyhi.rs",
-    "enabled": true,
-    "cf_key": "uggSwNfmItk20wzj7CuQgaiZjzwYDWedLuKTSrZp",
-    "zone": "c65a26127cb66300e175d903ccc9e1b9"
+    "enabled": false,
+    "domain": "",
+    "cf_key": "",
+    "zone": null
   }
 }

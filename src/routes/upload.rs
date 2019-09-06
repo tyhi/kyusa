@@ -25,13 +25,21 @@ pub fn upload(
     settings: web::Data<ServerSettings>,
     request: HttpRequest,
 ) -> Result<HttpResponse, Error> {
-    let file_parts = parts
-        .files
-        .remove("file")
-        .pop()
-        .and_then(|f| f.persist("./uploads").ok())
-        .unwrap_or_default();
-
+    let file_parts = match parts.files.remove("file").pop() {
+        Some(e) => match e.persist("./uploads").ok() {
+            Some(e) => e,
+            None => {
+                return Err(error::ErrorInternalServerError(
+                    "error saving multipart to temp folder",
+                ))
+            }
+        },
+        None => {
+            return Err(error::ErrorBadRequest(
+                "no file was included with multipart post",
+            ))
+        }
+    };
 
     let ext = match file_parts.extension().unwrap().to_str() {
         Some(e) => e.to_lowercase(),

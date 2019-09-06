@@ -59,13 +59,14 @@ pub fn delete(
             "https://{}/{}/{}",
             settings.website_name, path.folder, path.file
         );
-
-        cf_file_purge::purge_file(
+        if cf_file_purge::purge_file(
             &settings.cloudflare.zone.clone().unwrap(),
             &url,
             &settings.cloudflare.cf_key,
-        )
-        .unwrap();
+        ) != http::StatusCode::OK
+        {
+            return Err(error::ErrorInternalServerError("file has been delete from os, however there was an error purging cache from cloudflare make sure your key has permission"));
+        }
     }
     Ok(HttpResponse::Ok().body("file deleted"))
 }

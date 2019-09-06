@@ -70,7 +70,7 @@ fn main() {
         actix_web::App::new()
             .data(db.clone())
             .data(server_settings.clone())
-            .data(awmp::Parts::configure(|cfg| cfg.with_temp_dir("./uploads")))
+            .data(awmp::Parts::configure(|cfg| cfg))
             .route("/u", actix_web::web::post().to(upload::upload))
             .route("/d/{folder}/{file}", web::get().to(delete::delete))
             .route("/stats", web::get().to(stats::stats))
