@@ -1,9 +1,7 @@
-use crate::dbu;
-use actix_web::{error, web, Error, HttpRequest, HttpResponse};
+use crate::{cfg, dbu};
+use actix_web::{error, web, Error, HttpResponse};
 use serde::Serialize;
-use std::{fs, ops::Deref};
-
-use crate::ServerSettings;
+use std::fs;
 
 #[derive(Serialize)]
 struct UploadResp {
@@ -22,8 +20,7 @@ const RANDOM_FILE_EXT: &'static [&str] = &["png", "jpeg", "webm", "gif", "avi", 
 pub fn upload(
     mut parts: awmp::Parts,
     database: web::Data<sled::Db>,
-    settings: web::Data<ServerSettings>,
-    request: HttpRequest,
+    settings: web::Data<cfg::Config>,
 ) -> Result<HttpResponse, Error> {
     let file_parts = match parts.files.remove("file").pop() {
         Some(e) => match e.persist("./uploads").ok() {
@@ -58,23 +55,18 @@ pub fn upload(
 
     let del_key = nanoid::simple();
 
-    let ins = dbu::generate_insert_binary(
-        &file_names.new_path,
-        &del_key,
-        &request.connection_info().deref(),
-    )
-    .unwrap();
+    let ins = dbu::generate_insert_binary(&file_names.new_path, &del_key).unwrap();
 
     database.insert(&file_names.ffn.into_bytes(), ins).unwrap();
 
     Ok(HttpResponse::Ok().json(&UploadResp {
         url: format!(
-            "https://{}{}.{}",
-            settings.website_name, file_names.uri, ext
+            "{}://{}{}.{}",
+            settings.http_str, settings.domain, file_names.uri, ext
         ),
         delete_url: format!(
-            "https://{}/d{}.{}?del={}",
-            settings.website_name, file_names.uri, ext, del_key
+            "{}://{}/d{}.{}?del={}",
+            settings.http_str, settings.domain, file_names.uri, ext, del_key
         ),
     }))
 }
