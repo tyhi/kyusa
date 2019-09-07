@@ -21,7 +21,7 @@ pub fn get_domain_id(domain: &String, cf_api: &String) -> Option<String> {
     None
 }
 
-pub fn purge_file(zone: &String, url: &String, key: &String) -> http::StatusCode {
+pub fn purge_file(zone: &str, url: &String, key: &str) -> http::StatusCode {
     let files = PurgeFiles { files: vec![url] };
     let resp = Request::post(format!(
         "https://api.cloudflare.com/client/v4/zones/{}/purge_cache",

@@ -1,4 +1,4 @@
-use crate::{cf_file_purge, dbu, ServerSettings};
+use crate::{cf_file_purge, cfg, dbu};
 use actix_web::{error, web, Error, HttpResponse};
 use serde::Deserialize;
 use std::{fs, path};
@@ -17,7 +17,7 @@ pub fn delete(
     path: web::Path<FilePath>,
     del: web::Query<DeleteFile>,
     database: web::Data<sled::Db>,
-    settings: web::Data<ServerSettings>,
+    settings: web::Data<cfg::Config>,
 ) -> Result<HttpResponse, Error> {
     let binc = match database
         .get(format!("{}{}", path.folder, path.file))
@@ -54,15 +54,15 @@ pub fn delete(
         fs::remove_dir(file_path.parent().unwrap()).unwrap();
     }
 
-    if settings.cloudflare.enabled == true {
+    if settings.cf_enabled == true {
         let url = format!(
-            "https://{}/{}/{}",
-            settings.website_name, path.folder, path.file
+            "{}://{}/{}/{}",
+            settings.http_str, settings.domain, path.folder, path.file
         );
         if cf_file_purge::purge_file(
-            &settings.cloudflare.zone.clone().unwrap(),
+            &settings.cf_zone.as_ref().unwrap(),
             &url,
-            &settings.cloudflare.cf_key,
+            &settings.cf_api.as_ref().unwrap(),
         ) != http::StatusCode::OK
         {
             return Err(error::ErrorInternalServerError("file has been delete from os, however there was an error purging cache from cloudflare make sure your key has permission"));

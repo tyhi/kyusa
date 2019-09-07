@@ -1,8 +1,6 @@
 use actix_web::{web, FromRequest};
 use routes::{delete, serve, stats, upload};
-use serde::{Deserialize, Serialize};
 use sled::Db;
-use std::fs;
 
 mod cf_file_purge;
 mod cfg;
@@ -14,65 +12,23 @@ pub mod built_info {
     include!(concat!(env!("OUT_DIR"), "/built.rs"));
 }
 
-#[derive(Clone, Deserialize, Serialize)]
-pub struct ServerSettings {
-    pub api_keys: Vec<String>,
-    pub admin_keys: Vec<String>,
-    pub website_name: String,
-    pub https: bool,
-    pub cloudflare: CloudFlareSettings,
-}
-
-#[derive(Clone, Deserialize, Serialize)]
-pub struct CloudFlareSettings {
-    pub domain: String,
-    pub enabled: bool,
-    pub cf_key: String,
-    pub zone: Option<String>,
-}
-
 fn p404() -> &'static str {
     "this resource does not exist."
 }
 
 fn main() {
-    cfg::init_cfg();
-
-    if !std::path::Path::new("./config.json").exists() {
-        log::error!("no config");
-    }
-    let config_json = fs::File::open("./config.json").unwrap();
-    let mut server_settings: ServerSettings = serde_json::from_reader(config_json).unwrap();
-
-    server_settings.cloudflare.zone = match server_settings.cloudflare.zone {
-        Some(e) => Some(e),
-        None => Some(
-            cf_file_purge::get_domain_id(
-                &server_settings.cloudflare.domain,
-                &server_settings.cloudflare.cf_key,
-            )
-            .expect("unable to find cloudflare zone double check api key and website name"),
-        ),
-    };
-
-    fs::write(
-        "./config.json",
-        serde_json::to_string_pretty(&server_settings.clone())
-            .unwrap()
-            .as_bytes(),
-    )
-    .unwrap();
-
     if !std::path::Path::new("./uploads").exists() {
         std::fs::create_dir_all("./uploads").unwrap();
     }
 
     let db = Db::open("db").unwrap();
 
+    let config = cfg::load_cfg(db.clone());
+
     actix_web::HttpServer::new(move || {
         actix_web::App::new()
             .data(db.clone())
-            .data(server_settings.clone())
+            .data(config.clone())
             // Not using a defined temp folder caused issues on my arch linux server but not any others.
             .data(awmp::Parts::configure(|cfg| cfg))
             .route("/u", actix_web::web::post().to(upload::upload))
