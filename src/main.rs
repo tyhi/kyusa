@@ -43,7 +43,7 @@ fn main() {
     .unwrap();
 }
 
-#[cfg(target_os = "unix")]
+#[cfg(unix)]
 fn tempfile_loc(cfg: awmp::PartsConfig) -> awmp::PartsConfig {
     cfg.with_temp_dir("/dev/shm")
 }
