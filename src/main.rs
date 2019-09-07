@@ -21,6 +21,10 @@ fn main() {
         std::fs::create_dir_all("./uploads").unwrap();
     }
 
+    if !std::path::Path::new("./tmp").exists() {
+        std::fs::create_dir_all("./tmp").unwrap();
+    }
+
     let db = Db::open("db").unwrap();
 
     let config = cfg::load_cfg(db.clone());
@@ -30,7 +34,7 @@ fn main() {
             .data(db.clone())
             .data(config.clone())
             // Not using a defined temp folder caused issues on my arch linux server but not any others.
-            .data(awmp::Parts::configure(|cfg| tempfile_loc(cfg)))
+            .data(awmp::Parts::configure(|cfg| cfg.with_temp_dir("./tmp")))
             .route("/u", actix_web::web::post().to(upload::upload))
             .route("/d/{folder}/{file}", web::get().to(delete::delete))
             .route("/stats", web::get().to(stats::stats))
@@ -41,14 +45,4 @@ fn main() {
     .unwrap()
     .run()
     .unwrap();
-}
-
-#[cfg(unix)]
-fn tempfile_loc(cfg: awmp::PartsConfig) -> awmp::PartsConfig {
-    cfg.with_temp_dir("/dev/shm")
-}
-
-#[cfg(target_os = "windows")]
-fn tempfile_loc(cfg: awmp::PartsConfig) -> awmp::PartsConfig {
-    cfg
 }
