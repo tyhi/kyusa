@@ -15,7 +15,7 @@ struct NamedReturn {
     ffn: String,
 }
 
-const RANDOM_FILE_EXT: &'static [&str] = &["png", "jpeg", "webm", "gif", "avi", "mp4"];
+const RANDOM_FILE_EXT: &'static [&str] = &["png", "jpeg", "jpg", "webm", "gif", "avi", "mp4"];
 
 pub fn upload(
     mut parts: awmp::Parts,
