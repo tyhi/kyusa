@@ -11,7 +11,7 @@ build = "build.rs"
 [dependencies]
 actix-web = "1.0.7"
 awmp = "0.3.0"
-sled = "0.27.0"
+sled = "0.28.0"
 bincode = "1.1.4"
 serde = "1.0.100"
 nanoid = "0.2.0"
