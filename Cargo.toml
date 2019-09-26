@@ -9,7 +9,7 @@ build = "build.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-actix-web = "1.0.7"
+actix-web = "1.0.8"
 awmp = "0.3.0"
 sled = "0.28.0"
 bincode = "1.1.4"
