@@ -49,7 +49,10 @@ pub fn upload(
 
     let filename = file_parts.file_stem().unwrap().to_str().unwrap();
 
-    let file_names = gen_upload_file(filename, &ext);
+    let file_names = match gen_upload_file(filename, &ext) {
+        Err(error) => return Err(error::ErrorInternalServerError("error generating filename")),
+        Ok(file_names) => file_names,
+    };
 
     fs::rename(file_parts.display().to_string(), &file_names.new_path)?;
 
@@ -71,7 +74,10 @@ pub fn upload(
     }))
 }
 
-fn gen_upload_file(file_name: &str, ext: &String) -> NamedReturn {
+fn gen_upload_file(
+    file_name: &str,
+    ext: &String,
+) -> Result<NamedReturn, Box<dyn std::error::Error>> {
     loop {
         let name = match RANDOM_FILE_EXT.iter().any(|x| x == &ext.as_str()) {
             false => file_name.to_owned(),
@@ -84,14 +90,14 @@ fn gen_upload_file(file_name: &str, ext: &String) -> NamedReturn {
 
         if !std::path::Path::new(&path).exists() {
             if !std::path::Path::new(&format!("./uploads/{}", folder_dir)).exists() {
-                fs::create_dir_all(format!("./uploads/{}", folder_dir)).unwrap();
+                fs::create_dir_all(format!("./uploads/{}", folder_dir))?;
             }
 
-            return NamedReturn {
+            return Ok(NamedReturn {
                 new_path: path,
                 uri: format!("/{}/{}", folder_dir, name),
                 ffn: format!("{}{}.{}", folder_dir, name, ext),
-            };
+            });
         }
     }
 }

@@ -10,7 +10,7 @@ struct Stats {
 
 pub fn stats(database: web::Data<sled::Db>) -> HttpResponse {
     HttpResponse::Ok().json(Stats {
-        files: database.len(),
+        files: database.len() - 1,
         version: format!(
             "{} {}",
             built_info::PKG_VERSION,

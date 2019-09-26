@@ -81,15 +81,17 @@ fn parse_yn(question: &str) -> bool {
     }
 }
 
-pub fn load_cfg(db: sled::Db) -> Config {
-    let binc = db.get(b"cfg").unwrap();
-    if binc != None {
-        let e: Config = bincode::deserialize(&binc.unwrap()).unwrap();
-        return e;
-    } else {
-        let e = init_cfg();
-        let bin = bincode::serialize(&e).unwrap();
-        db.insert(b"cfg", bin).unwrap();
-        return e;
+pub fn load_cfg(db: sled::Db) -> Result<Config, Box<dyn std::error::Error>> {
+    match db.get(b"cfg")? {
+        Some(config) => {
+            let e: Config = bincode::deserialize(&config).unwrap();
+            return Ok(e);
+        }
+        None => {
+            let e = init_cfg();
+            let bin = bincode::serialize(&e)?;
+            db.insert(b"cfg", bin)?;
+            return Ok(e);
+        }
     }
 }

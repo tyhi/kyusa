@@ -51,7 +51,7 @@ pub fn delete(
         .next()
         .is_none()
     {
-        fs::remove_dir(file_path.parent().unwrap()).unwrap();
+        fs::remove_dir(file_path.parent().unwrap())?;
     }
 
     if settings.cf_enabled == true {

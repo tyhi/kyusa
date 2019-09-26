@@ -16,18 +16,18 @@ fn p404() -> &'static str {
     "this resource does not exist."
 }
 
-fn main() {
+fn main() -> std::io::Result<()> {
     if !std::path::Path::new("./uploads").exists() {
-        std::fs::create_dir_all("./uploads").unwrap();
+        std::fs::create_dir_all("./uploads")?;
     }
 
     if !std::path::Path::new("./tmp").exists() {
-        std::fs::create_dir_all("./tmp").unwrap();
+        std::fs::create_dir_all("./tmp")?;
     }
 
     let db = Db::open("db").unwrap();
 
-    let config = cfg::load_cfg(db.clone());
+    let config = cfg::load_cfg(db.clone()).expect("error loading config");
 
     actix_web::HttpServer::new(move || {
         actix_web::App::new()
@@ -41,8 +41,6 @@ fn main() {
             .service(web::resource("/{folder}/{file}").route(web::get().to(serve::serve)))
             .default_service(web::resource("").route(web::get().to(p404)))
     })
-    .bind("0.0.0.0:3000")
-    .unwrap()
+    .bind("0.0.0.0:3000")?
     .run()
-    .unwrap();
 }
