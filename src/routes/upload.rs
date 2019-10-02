@@ -22,7 +22,7 @@ pub fn upload(
     database: web::Data<sled::Db>,
     settings: web::Data<cfg::Config>,
 ) -> Result<HttpResponse, Error> {
-    let file_parts = match parts.files.remove("file").pop() {
+    let file_parts = match parts.files.take("file").pop() {
         Some(e) => match e.persist("./uploads").ok() {
             Some(e) => e,
             None => {
@@ -50,7 +50,7 @@ pub fn upload(
     let filename = file_parts.file_stem().unwrap().to_str().unwrap();
 
     let file_names = match gen_upload_file(filename, &ext) {
-        Err(error) => return Err(error::ErrorInternalServerError("error generating filename")),
+        Err(err) => return Err(error::ErrorInternalServerError(format!("error generating filename: {}", err))),
         Ok(file_names) => file_names,
     };
 
