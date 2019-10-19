@@ -50,7 +50,7 @@ pub fn delete(
         Err(err) => return Err(error::ErrorInternalServerError(err)),
     }
 
-    if settings.cf_enabled == true {
+    if settings.cloudflare_details.is_some() == true {
         let url = format!(
             "{}://{}/{}/{}",
             settings.http_str, settings.domain, path.folder, path.file

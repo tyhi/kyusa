@@ -8,7 +8,6 @@ pub struct Config {
     pub domain: String,
     pub domain_root: String,
     pub http_str: String,
-    pub cf_enabled: bool,
     pub cloudflare_details: Option<CloudflareDetails>,
 }
 
@@ -47,7 +46,6 @@ pub fn init_cfg() -> Config {
             domain: domain_full,
             domain_root,
             http_str: https,
-            cf_enabled: true,
             cloudflare_details: Some(CloudflareDetails{cf_zone, cf_api }),
         }
 
@@ -58,7 +56,6 @@ pub fn init_cfg() -> Config {
         domain: domain_full,
         domain_root,
         http_str: https,
-        cf_enabled: false,
         cloudflare_details: None,
     };
 }
