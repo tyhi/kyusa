@@ -9,8 +9,13 @@ pub struct Config {
     pub domain_root: String,
     pub http_str: String,
     pub cf_enabled: bool,
-    pub cf_zone: Option<String>,
-    pub cf_api: Option<String>,
+    pub cloudflare_details: Option<CloudflareDetails>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct CloudflareDetails {
+    pub cf_zone: String,
+    pub cf_api: String,
 }
 
 pub fn init_cfg() -> Config {
@@ -37,15 +42,13 @@ pub fn init_cfg() -> Config {
 
         println!("Enter CloudFlare API Key (Permissions needed: Zone.Zone, Zone.Cache Purge):");
         let cf_api= get_input();
-        let zone= cf_file_purge::get_domain_id(&domain_root, &cf_api).unwrap();
-        println!("zone found with id: {}", zone);
+        let cf_zone= cf_file_purge::get_domain_id(&domain_root, &cf_api).expect("error getting domain id from cloudflare").expect("no id found for that domain");
         return Config {
             domain: domain_full,
-            domain_root: domain_root,
+            domain_root,
             http_str: https,
             cf_enabled: true,
-            cf_zone: Some(zone),
-            cf_api: Some(cf_api),
+            cloudflare_details: Some(CloudflareDetails{cf_zone, cf_api }),
         }
 
     }
@@ -53,11 +56,10 @@ pub fn init_cfg() -> Config {
     // Setup public/private
     return Config {
         domain: domain_full,
-        domain_root: domain_root,
+        domain_root,
         http_str: https,
         cf_enabled: false,
-        cf_zone: None,
-        cf_api: None,
+        cloudflare_details: None,
     };
 }
 

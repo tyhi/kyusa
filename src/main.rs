@@ -27,7 +27,7 @@ fn main() -> std::io::Result<()> {
 
     let db = Db::open("db").unwrap();
 
-    let config = cfg::load_cfg(db.clone()).expect("error loading config");
+    let config = cfg::load_cfg(db.clone()).unwrap();
 
     actix_web::HttpServer::new(move || {
         actix_web::App::new()

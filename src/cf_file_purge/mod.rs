@@ -3,25 +3,29 @@ use isahc::prelude::*;
 
 pub mod models;
 
-pub fn get_domain_id(domain: &String, cf_api: &String) -> Option<String> {
+pub fn get_domain_id(
+    domain: &String,
+    cf_api: &String,
+) -> Result<Option<String>, Box<dyn std::error::Error>> {
     let resp = Request::get("https://api.cloudflare.com/client/v4/zones")
         .header("Authorization", format!("Bearer {}", cf_api))
-        .body(())
-        .unwrap()
-        .send()
-        .unwrap()
-        .json::<Zones>()
-        .unwrap();
+        .body(())?
+        .send()?
+        .json::<Zones>()?;
 
     for x in resp.result.iter() {
         if &x.name == domain {
-            return Some(x.id.clone());
+            return Ok(Some(x.id.clone()));
         }
     }
-    None
+    Ok(None)
 }
 
-pub fn purge_file(zone: &str, url: &String, key: &str) -> http::StatusCode {
+pub fn purge_file(
+    zone: &str,
+    url: &String,
+    key: &str,
+) -> Result<http::StatusCode, Box<dyn std::error::Error>> {
     let files = PurgeFiles { files: vec![url] };
     let resp = Request::post(format!(
         "https://api.cloudflare.com/client/v4/zones/{}/purge_cache",
@@ -29,10 +33,8 @@ pub fn purge_file(zone: &str, url: &String, key: &str) -> http::StatusCode {
     ))
     .header("Authorization", format!("Bearer {}", key))
     .header("content-type", "application/json")
-    .body(serde_json::to_vec(&files).unwrap())
-    .unwrap()
-    .send()
-    .unwrap();
+    .body(serde_json::to_vec(&files)?)?
+    .send()?;
 
-    resp.status()
+    Ok(resp.status())
 }

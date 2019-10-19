@@ -47,10 +47,27 @@ pub fn upload(
         }
     };
 
-    let filename = file_parts.file_stem().unwrap().to_str().unwrap();
+    let filename = match match file_parts.file_stem() {
+        Some(x) => x,
+        None => return Err(error::ErrorInternalServerError("error getting filestem")),
+    }
+    .to_str()
+    {
+        Some(x) => x,
+        None => {
+            return Err(error::ErrorInternalServerError(
+                "error converting OsStr to string",
+            ))
+        }
+    };
 
     let file_names = match gen_upload_file(filename, &ext) {
-        Err(err) => return Err(error::ErrorInternalServerError(format!("error generating filename: {}", err))),
+        Err(err) => {
+            return Err(error::ErrorInternalServerError(format!(
+                "error generating filename: {}",
+                err
+            )))
+        }
         Ok(file_names) => file_names,
     };
 
@@ -58,9 +75,15 @@ pub fn upload(
 
     let del_key = nanoid::simple();
 
-    let ins = dbu::generate_insert_binary(&file_names.new_path, &del_key).unwrap();
+    let ins = match dbu::generate_insert_binary(&file_names.new_path, &del_key) {
+        Ok(x) => x,
+        Err(err) => return Err(error::ErrorInternalServerError(err)),
+    };
 
-    database.insert(&file_names.ffn.into_bytes(), ins).unwrap();
+    match database.insert(&file_names.ffn.into_bytes(), ins) {
+        Ok(x) => x,
+        Err(err) => return Err(error::ErrorInternalServerError(err)),
+    };
 
     Ok(HttpResponse::Ok().json(&UploadResp {
         url: format!(
