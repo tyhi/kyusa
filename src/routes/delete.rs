@@ -53,7 +53,7 @@ pub fn delete(
     if settings.cloudflare_details.is_some() == true {
         let url = format!(
             "{}://{}/{}/{}",
-            settings.http_str, settings.domain, path.folder, path.file
+            settings.https, settings.domain, path.folder, path.file
         );
         match cf_file_purge::purge_file(
             &settings.cloudflare_details.as_ref().unwrap().cf_zone,
