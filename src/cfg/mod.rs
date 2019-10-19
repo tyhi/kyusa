@@ -7,7 +7,7 @@ use std::io;
 pub struct Config {
     pub domain: String,
     pub domain_root: String,
-    pub http_str: String,
+    pub https: String,
     pub cloudflare_details: Option<CloudflareDetails>,
 }
 
@@ -45,7 +45,7 @@ pub fn init_cfg() -> Config {
         return Config {
             domain: domain_full,
             domain_root,
-            http_str: https,
+            https,
             cloudflare_details: Some(CloudflareDetails{cf_zone, cf_api }),
         }
 
@@ -55,7 +55,7 @@ pub fn init_cfg() -> Config {
     return Config {
         domain: domain_full,
         domain_root,
-        http_str: https,
+        https,
         cloudflare_details: None,
     };
 }

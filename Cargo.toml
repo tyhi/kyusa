@@ -1,9 +1,9 @@
 [package]
-name = "keou"
+name = "kyusa"
 version = "0.1.0"
 authors = ["Tyler Hill <tyhi@tyhi.rs"]
 edition = "2018"
-repository = "https://github.com/tyhi/keou"
+repository = "https://github.com/tyhi/kyusa"
 build = "build.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

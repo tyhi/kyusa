@@ -88,11 +88,11 @@ pub fn upload(
     Ok(HttpResponse::Ok().json(&UploadResp {
         url: format!(
             "{}://{}{}.{}",
-            settings.http_str, settings.domain, file_names.uri, ext
+            settings.https, settings.domain, file_names.uri, ext
         ),
         delete_url: format!(
             "{}://{}/d{}.{}?del={}",
-            settings.http_str, settings.domain, file_names.uri, ext, del_key
+            settings.https, settings.domain, file_names.uri, ext, del_key
         ),
     }))
 }

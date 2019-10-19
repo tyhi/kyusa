@@ -9,11 +9,14 @@ pub struct FileMetadata<'a> {
     pub time_date: DateTime<Utc>,
 }
 
-pub fn generate_insert_binary(filepath: &String, delkey: &String) -> Result<Vec<u8>, &'static str> {
+pub fn generate_insert_binary(
+    file_path: &String,
+    del_key: &String,
+) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let metadata = FileMetadata {
-        file_path: filepath,
-        del_key: delkey,
+        file_path,
+        del_key,
         time_date: chrono::Utc::now(),
     };
-    Ok(serialize(&metadata).unwrap())
+    Ok(serialize(&metadata)?)
 }
