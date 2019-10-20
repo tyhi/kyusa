@@ -21,6 +21,7 @@ pub struct CloudflareDetails {
 }
 #[derive(Serialize, Deserialize, Clone)]
 pub struct KeyDetails {
+    pub name: String,
     pub admin: bool,
 }
 
@@ -63,7 +64,13 @@ pub fn init_cfg() -> Config {
             api_key
         );
         private = true;
-        api_keys.insert(api_key, KeyDetails { admin: true });
+        api_keys.insert(
+            api_key,
+            KeyDetails {
+                name: "admin".to_string(),
+                admin: true,
+            },
+        );
     } else {
         private = false;
     }
