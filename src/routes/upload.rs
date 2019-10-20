@@ -1,5 +1,5 @@
 use crate::{cfg, dbu};
-use actix_web::{error, web, Error, HttpResponse};
+use actix_web::{error, web, Error, HttpRequest, HttpResponse};
 use serde::Serialize;
 use std::fs;
 
@@ -21,7 +21,26 @@ pub fn upload(
     mut parts: awmp::Parts,
     database: web::Data<sled::Db>,
     settings: web::Data<cfg::Config>,
+    request: HttpRequest,
 ) -> Result<HttpResponse, Error> {
+    if settings.private {
+        match request.headers().get("apikey") {
+            Some(x) => {
+                if settings
+                    .key_details
+                    .get(match x.to_str() {
+                        Ok(x) => x,
+                        Err(e) => return Err(error::ErrorUnauthorized(e)),
+                    })
+                    .is_none()
+                {
+                    return Err(error::ErrorUnauthorized("invalid api key"));
+                }
+            }
+            None => return Err(error::ErrorUnauthorized("no api key supplied")),
+        };
+    }
+
     let file_parts = match parts.files.take("file").pop() {
         Some(e) => match e.persist("./uploads").ok() {
             Some(e) => e,
