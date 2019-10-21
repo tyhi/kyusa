@@ -1,5 +1,5 @@
 use crate::{cf_file_purge, cfg, dbu};
-use actix_web::{error, web, Error, HttpResponse};
+use actix_web::{error, get, web, Error, HttpResponse};
 use serde::Deserialize;
 use std::{fs, path};
 
@@ -12,7 +12,7 @@ pub struct FilePath {
 pub struct DeleteFile {
     pub del: String,
 }
-
+#[get("/d/{folder}/{file}")]
 pub fn delete(
     path: web::Path<FilePath>,
     del: web::Query<DeleteFile>,

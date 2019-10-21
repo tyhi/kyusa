@@ -1,5 +1,5 @@
 use actix_files::NamedFile;
-use actix_web::{error, web, Error};
+use actix_web::{error, get, web, Error};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -8,6 +8,7 @@ pub struct FilePath {
     pub file: String,
 }
 
+#[get("/{folder}/{file}")]
 pub fn serve(info: web::Path<FilePath>) -> Result<NamedFile, Error> {
     let file = format!("./uploads/{}/{}", info.folder, info.file);
 

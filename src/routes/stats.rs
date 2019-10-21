@@ -1,5 +1,5 @@
 use crate::built_info;
-use actix_web::{web, HttpResponse};
+use actix_web::{get, web, HttpResponse};
 use serde::Serialize;
 
 #[derive(Serialize)]
@@ -8,6 +8,7 @@ struct Stats {
     version: String,
 }
 
+#[get("/stats")]
 pub fn stats(database: web::Data<sled::Db>) -> HttpResponse {
     HttpResponse::Ok().json(Stats {
         files: database.len() - 1,

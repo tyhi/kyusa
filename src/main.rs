@@ -1,5 +1,4 @@
 use actix_web::{web, FromRequest};
-use routes::{delete, serve, stats, upload};
 use sled::Db;
 
 mod cf_file_purge;
@@ -35,10 +34,7 @@ fn main() -> std::io::Result<()> {
             .data(config.clone())
             // Not using a defined temp folder caused issues on my arch linux server but not any others.
             .data(awmp::Parts::configure(|cfg| cfg.with_temp_dir("./tmp")))
-            .route("/u", actix_web::web::post().to(upload::upload))
-            .route("/d/{folder}/{file}", web::get().to(delete::delete))
-            .route("/stats", web::get().to(stats::stats))
-            .service(web::resource("/{folder}/{file}").route(web::get().to(serve::serve)))
+            .service(routes::routes())
             .default_service(web::resource("").route(web::get().to(p404)))
     })
     .bind("0.0.0.0:3000")?

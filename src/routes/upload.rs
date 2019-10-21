@@ -1,5 +1,5 @@
 use crate::{cfg, dbu};
-use actix_web::{error, web, Error, HttpRequest, HttpResponse};
+use actix_web::{error, post, web, Error, HttpRequest, HttpResponse};
 use serde::Serialize;
 use std::fs;
 
@@ -17,6 +17,7 @@ struct NamedReturn {
 
 const RANDOM_FILE_EXT: &'static [&str] = &["png", "jpeg", "jpg", "webm", "gif", "avi", "mp4"];
 
+#[post("/u")]
 pub fn upload(
     mut parts: awmp::Parts,
     database: web::Data<sled::Db>,
