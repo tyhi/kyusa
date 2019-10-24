@@ -6,6 +6,7 @@ use serde::Serialize;
 struct Stats {
     files: usize,
     version: String,
+    rustc: String,
 }
 
 #[get("/stats")]
@@ -17,5 +18,6 @@ pub fn stats(database: web::Data<sled::Db>) -> HttpResponse {
             built_info::PKG_VERSION,
             built_info::GIT_VERSION.map_or_else(|| "".to_owned(), |v| format!("(git {})", v))
         ),
+        rustc: built_info::RUSTC_VERSION.to_owned(),
     })
 }
