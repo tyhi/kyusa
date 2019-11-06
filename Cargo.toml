@@ -10,19 +10,19 @@ build = "build.rs"
 
 [dependencies]
 actix-web = "1.0.8"
-awmp = "0.4.0"
-sled = "0.29.1"
+awmp = "0.4.1"
+sled = "0.29.2"
 bincode = "1.2.0"
-serde = "1.0.101"
+serde = "1.0.102"
 nanoid = "0.2.0"
-actix-files = "0.1.4"
+actix-files = "0.1.6"
 serde_json = "1.0.41"
 chrono = {version = "0.4.9", features = ["serde"]}
-http = "0.1.18"
+http = "0.1.19"
 addr = "0.2.0"
 
 [dependencies.isahc]
-version = "0.7.4"
+version = "0.7.5"
 features = ["json"]
 
 [build-dependencies]
