@@ -22,7 +22,7 @@ http = "0.1.19"
 addr = "0.2.0"
 
 [dependencies.isahc]
-version = "0.7.5"
+version = "0.8.1"
 features = ["json"]
 
 [build-dependencies]
