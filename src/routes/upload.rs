@@ -1,7 +1,10 @@
 use crate::{cfg, dbu};
+use actix_multipart::{Field, Multipart};
 use actix_web::{error, post, web, Error, HttpRequest, HttpResponse};
+use futures::StreamExt;
 use serde::Serialize;
 use std::fs;
+use std::io::Write;
 
 #[derive(Serialize)]
 struct UploadResp {
@@ -13,13 +16,14 @@ struct NamedReturn {
     new_path: String,
     uri: String,
     ffn: String,
+    ext: String,
 }
 
 const RANDOM_FILE_EXT: &'static [&str] = &["png", "jpeg", "jpg", "webm", "gif", "avi", "mp4"];
 
 #[post("/u")]
-pub fn upload(
-    mut parts: awmp::Parts,
+pub async fn upload(
+    mut multipart: Multipart,
     database: web::Data<sled::Db>,
     settings: web::Data<cfg::Config>,
     request: HttpRequest,
@@ -41,88 +45,80 @@ pub fn upload(
             None => return Err(error::ErrorUnauthorized("no api key supplied")),
         };
     }
+    while let Some(item) = multipart.next().await {
+        let mut field = item?;
 
-    let file_parts = match parts.files.take("file").pop() {
-        Some(e) => match e.persist("./uploads").ok() {
-            Some(e) => e,
-            None => {
-                return Err(error::ErrorInternalServerError(
-                    "error saving multipart to temp folder",
-                ))
+        match check_name(&field) {
+            Ok(b) => {
+                if b == false {
+                    continue;
+                }
             }
-        },
-        None => {
-            return Err(error::ErrorBadRequest(
-                "no file was included with multipart post",
-            ))
-        }
-    };
+            Err(e) => return Err(error::ErrorInternalServerError(e)),
+        };
 
-    let ext = match file_parts.extension().unwrap().to_str() {
-        Some(e) => e.to_lowercase(),
-        None => {
-            return Err(error::ErrorBadRequest(
-                "files without extensions are not allowed",
-            ))
+        let file_names = match gen_upload_file(&field) {
+            Ok(file_names) => file_names,
+            Err(err) => {
+                return Err(error::ErrorInternalServerError(format!(
+                    "error generating filename: {}",
+                    err
+                )))
+            }
+        };
+        let mut f = std::fs::File::create(&file_names.new_path)?;
+        while let Some(chunk) = field.next().await {
+            let data = chunk?;
+            let mut pos = 0;
+            while pos < data.len() {
+                let bytes_written = f.write(&data[pos..])?;
+                pos += bytes_written;
+            }
         }
-    };
 
-    let filename = match match file_parts.file_stem() {
-        Some(x) => x,
-        None => return Err(error::ErrorInternalServerError("error getting filestem")),
+        let del_key = nanoid::simple();
+
+        let ins = match dbu::generate_insert_binary(&file_names.new_path, &del_key) {
+            Ok(x) => x,
+            Err(err) => return Err(error::ErrorInternalServerError(err)),
+        };
+
+        match database.insert(&file_names.ffn.into_bytes(), ins) {
+            Ok(x) => x,
+            Err(err) => return Err(error::ErrorInternalServerError(err)),
+        };
+
+        return Ok(HttpResponse::Ok().json(&UploadResp {
+            url: format!(
+                "{}://{}{}.{}",
+                settings.https, settings.domain, file_names.uri, file_names.ext
+            ),
+            delete_url: format!(
+                "{}://{}/d{}.{}?del={}",
+                settings.https, settings.domain, file_names.uri, file_names.ext, del_key
+            ),
+        }));
     }
-    .to_str()
-    {
-        Some(x) => x,
-        None => {
-            return Err(error::ErrorInternalServerError(
-                "error converting OsStr to string",
-            ))
-        }
-    };
-
-    let file_names = match gen_upload_file(filename, &ext) {
-        Err(err) => {
-            return Err(error::ErrorInternalServerError(format!(
-                "error generating filename: {}",
-                err
-            )))
-        }
-        Ok(file_names) => file_names,
-    };
-
-    fs::rename(file_parts.display().to_string(), &file_names.new_path)?;
-
-    let del_key = nanoid::simple();
-
-    let ins = match dbu::generate_insert_binary(&file_names.new_path, &del_key) {
-        Ok(x) => x,
-        Err(err) => return Err(error::ErrorInternalServerError(err)),
-    };
-
-    match database.insert(&file_names.ffn.into_bytes(), ins) {
-        Ok(x) => x,
-        Err(err) => return Err(error::ErrorInternalServerError(err)),
-    };
-
-    Ok(HttpResponse::Ok().json(&UploadResp {
-        url: format!(
-            "{}://{}{}.{}",
-            settings.https, settings.domain, file_names.uri, ext
-        ),
-        delete_url: format!(
-            "{}://{}/d{}.{}?del={}",
-            settings.https, settings.domain, file_names.uri, ext, del_key
-        ),
-    }))
+    Err(error::ErrorBadRequest("no files uploaded"))
 }
 
-fn gen_upload_file(
-    file_name: &str,
-    ext: &String,
-) -> Result<NamedReturn, Box<dyn std::error::Error>> {
+fn gen_upload_file(field: &Field) -> Result<NamedReturn, Box<dyn std::error::Error>> {
+    let content = field.content_disposition().ok_or("error getting content")?;
+    let path = std::path::Path::new(content.get_filename().ok_or("error getting filename")?);
+
+    let file_name = path
+        .file_stem()
+        .ok_or("missing filename")?
+        .to_str()
+        .ok_or("error converting to str")?;
+    let ext = path
+        .extension()
+        .ok_or("unable to get ext")?
+        .to_str()
+        .ok_or("unable to convert to str")?;
+
     loop {
-        let name = match RANDOM_FILE_EXT.iter().any(|x| x == &ext.as_str()) {
+        let name = match RANDOM_FILE_EXT.iter().any(|x| x == &ext) {
             false => file_name.to_owned(),
             true => nanoid::generate(6),
         };
@@ -140,7 +136,21 @@ fn gen_upload_file(
                 new_path: path,
                 uri: format!("/{}/{}", folder_dir, name),
                 ffn: format!("{}{}.{}", folder_dir, name, ext),
+                ext: format!("{}", ext),
             });
         }
     }
+}
+
+fn check_name(field: &Field) -> Result<bool, Box<dyn std::error::Error>> {
+    if field
+        .content_disposition()
+        .ok_or("error getting disposition")?
+        .get_name()
+        .ok_or("error getting multipart name")?
+        != "file"
+    {
+        return Ok(false);
+    }
+    return Ok(true);
 }

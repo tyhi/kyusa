@@ -10,7 +10,7 @@ struct Stats {
 }
 
 #[get("/stats")]
-pub fn stats(database: web::Data<sled::Db>) -> HttpResponse {
+pub async fn stats(database: web::Data<sled::Db>) -> HttpResponse {
     HttpResponse::Ok().json(Stats {
         files: database.len() - 1,
         version: format!(

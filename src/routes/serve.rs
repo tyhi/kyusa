@@ -9,7 +9,7 @@ pub struct FilePath {
 }
 
 #[get("/{folder}/{file}")]
-pub fn serve(info: web::Path<FilePath>) -> Result<NamedFile, Error> {
+pub async fn serve(info: web::Path<FilePath>) -> Result<NamedFile, Error> {
     let file = format!("./uploads/{}/{}", info.folder, info.file);
 
     match NamedFile::open(file) {

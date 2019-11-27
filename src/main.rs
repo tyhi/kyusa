@@ -1,4 +1,4 @@
-use actix_web::{web, FromRequest};
+use actix_web::{web};
 use sled::Db;
 
 mod cf_file_purge;
@@ -11,7 +11,7 @@ pub mod built_info {
     include!(concat!(env!("OUT_DIR"), "/built.rs"));
 }
 
-fn p404() -> &'static str {
+async fn p404() -> &'static str {
     "this resource does not exist."
 }
 
@@ -33,7 +33,6 @@ fn main() -> std::io::Result<()> {
             .data(db.clone())
             .data(config.clone())
             // Not using a defined temp folder caused issues on my arch linux server but not any others.
-            .data(awmp::Parts::configure(|cfg| cfg.with_temp_dir("./tmp")))
             .service(routes::routes())
             .default_service(web::resource("").route(web::get().to(p404)))
     })

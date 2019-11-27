@@ -9,20 +9,21 @@ build = "build.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-actix-web = "1.0.8"
-awmp = "0.4.1"
+actix-web = "2.0.0-alpha.1"
+actix-multipart = "0.2.0-alpha.1"
 sled = "0.29.2"
 bincode = "1.2.0"
-serde = "1.0.102"
+serde = "1.0.103"
 nanoid = "0.2.0"
-actix-files = "0.1.6"
-serde_json = "1.0.41"
-chrono = {version = "0.4.9", features = ["serde"]}
-http = "0.1.19"
+actix-files = "0.2.0-alpha.1"
+serde_json = "1.0.42"
+chrono = {version = "0.4.10", features = ["serde"]}
+http = "0.1.20"
 addr = "0.2.0"
+futures = "0.3.1"
 
 [dependencies.isahc]
-version = "0.7.5"
+version = "0.8.1"
 features = ["json"]
 
 [build-dependencies]

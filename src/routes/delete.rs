@@ -13,7 +13,7 @@ pub struct DeleteFile {
     pub del: String,
 }
 #[get("/d/{folder}/{file}")]
-pub fn delete(
+pub async fn delete(
     path: web::Path<FilePath>,
     del: web::Query<DeleteFile>,
     database: web::Data<sled::Db>,
