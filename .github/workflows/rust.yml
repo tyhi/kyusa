@@ -9,5 +9,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
+      with:
+        profile: default
+        toochain: nightly
     - name: Build
       run: cargo build --verbose
