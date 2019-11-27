@@ -32,7 +32,6 @@ fn main() -> std::io::Result<()> {
         actix_web::App::new()
             .data(db.clone())
             .data(config.clone())
-            // Not using a defined temp folder caused issues on my arch linux server but not any others.
             .service(routes::routes())
             .default_service(web::resource("").route(web::get().to(p404)))
     })

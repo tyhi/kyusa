@@ -21,7 +21,7 @@ pub fn get_domain_id(
     Ok(None)
 }
 
-pub fn purge_file(
+pub async fn purge_file(
     zone: &str,
     url: &String,
     key: &str,
@@ -34,7 +34,8 @@ pub fn purge_file(
     .header("Authorization", format!("Bearer {}", key))
     .header("content-type", "application/json")
     .body(serde_json::to_vec(&files)?)?
-    .send()?;
+    .send_async()
+    .await?;
 
     Ok(resp.status())
 }

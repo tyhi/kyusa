@@ -1,11 +1,9 @@
-use crate::{cfg, dbu};
+use crate::{cfg, dbu, routes::delete::del_file};
 use actix_multipart::{Field, Multipart};
-use actix_web::http::HeaderMap;
-use actix_web::{error, post, web, Error, HttpRequest, HttpResponse};
+use actix_web::{error, http::HeaderMap, post, web, Error, HttpRequest, HttpResponse};
 use futures::StreamExt;
 use serde::Serialize;
-use std::fs;
-use std::io::Write;
+use std::{fs, io::Write, path::Path};
 
 #[derive(Serialize)]
 struct UploadResp {
@@ -15,6 +13,7 @@ struct UploadResp {
 
 struct NamedReturn {
     new_path: String,
+    temp_path: String,
     uri: String,
     ffn: String,
     ext: String,
@@ -38,7 +37,6 @@ pub async fn upload(
 
     while let Some(item) = multipart.next().await {
         let mut field = item?;
-
         match check_name(&field) {
             Ok(b) => {
                 if b == false {
@@ -47,7 +45,6 @@ pub async fn upload(
             }
             Err(e) => return Err(error::ErrorInternalServerError(e)),
         };
-
         let file_names = match gen_upload_file(&field) {
             Ok(file_names) => file_names,
             Err(err) => {
@@ -57,13 +54,29 @@ pub async fn upload(
                 )))
             }
         };
-        let mut f = std::fs::File::create(&file_names.new_path)?;
+        let mut f = std::fs::File::create(&file_names.temp_path)?;
+        let mut fs = 0;
         while let Some(chunk) = field.next().await {
             let data = chunk?;
             let mut pos = 0;
             while pos < data.len() {
                 let bytes_written = f.write(&data[pos..])?;
                 pos += bytes_written;
+            }
+            fs += data.len();
+
+            // Hard coded 90MB upload limit to play nice with cloudflare.
+            // Actual limit is 100MB however we might not be able to catch it before a chunk might put it over the limit.
+            if fs > 90_000_000 {
+                match del_file(Path::new(&file_names.temp_path)) {
+                    Ok(()) => (),
+                    Err(_) => {
+                        return Err(error::ErrorInternalServerError(
+                            "file larger than 90MB and failed to clean temp file",
+                        ))
+                    }
+                };
+                return Err(error::ErrorPayloadTooLarge("larger than 100mb limit"));
             }
         }
 
@@ -79,6 +92,7 @@ pub async fn upload(
             Err(err) => return Err(error::ErrorInternalServerError(err)),
         };
 
+        std::fs::rename(&file_names.temp_path, &file_names.new_path)?;
         return Ok(HttpResponse::Ok().json(&UploadResp {
             url: format!(
                 "{}://{}{}.{}",
@@ -118,13 +132,14 @@ fn gen_upload_file(field: &Field) -> Result<NamedReturn, Box<dyn std::error::Err
 
         let path = format!("./uploads/{}/{}.{}", folder_dir, name, ext);
 
-        if !std::path::Path::new(&path).exists() {
-            if !std::path::Path::new(&format!("./uploads/{}", folder_dir)).exists() {
+        if !Path::new(&path).exists() {
+            if !Path::new(&format!("./uploads/{}", folder_dir)).exists() {
                 fs::create_dir_all(format!("./uploads/{}", folder_dir))?;
             }
 
             return Ok(NamedReturn {
                 new_path: path,
+                temp_path: format!("./uploads/{}/{}.{}.~tmp", folder_dir, name, ext),
                 uri: format!("/{}/{}", folder_dir, name),
                 ffn: format!("{}{}.{}", folder_dir, name, ext),
                 ext: format!("{}", ext),

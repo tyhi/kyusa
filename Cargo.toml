@@ -1,6 +1,6 @@
 [package]
 name = "kyusa"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Tyler Hill <tyhi@tyhi.rs"]
 edition = "2018"
 repository = "https://github.com/tyhi/kyusa"

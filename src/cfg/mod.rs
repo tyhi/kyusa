@@ -1,8 +1,7 @@
 use crate::cf_file_purge;
 use addr::DomainName;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::io;
+use std::{collections::HashMap, io};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Config {

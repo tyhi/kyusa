@@ -59,7 +59,9 @@ pub async fn delete(
             &settings.cloudflare_details.as_ref().unwrap().cf_zone,
             &url,
             &settings.cloudflare_details.as_ref().unwrap().cf_api,
-        ) {
+        )
+        .await
+        {
             Ok(status) => {
                 if status != http::StatusCode::OK {
                     return Err(error::ErrorInternalServerError("file has been delete from os, however there was an error purging cache from cloudflare make sure your key has permission"));
@@ -71,7 +73,7 @@ pub async fn delete(
     Ok(HttpResponse::Ok().body("file deleted"))
 }
 
-fn del_file(file_path: &path::Path) -> Result<(), Box<dyn std::error::Error>> {
+pub fn del_file(file_path: &path::Path) -> Result<(), Box<dyn std::error::Error>> {
     fs::remove_file(file_path)?;
 
     // The unwraps here should never fault because it's impossible with our setup to never have a parent dir.
