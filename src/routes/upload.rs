@@ -38,11 +38,11 @@ pub async fn upload(
     while let Some(item) = multipart.next().await {
         let mut field = item?;
         match check_name(&field) {
-            Ok(b) => {
-                if b == false {
+            Ok(valid) => {
+                if !valid {
                     continue;
                 }
-            }
+            },
             Err(e) => return Err(error::ErrorInternalServerError(e)),
         };
         let file_names = match gen_upload_file(&field) {
@@ -52,7 +52,7 @@ pub async fn upload(
                     "error generating filename: {}",
                     err
                 )))
-            }
+            },
         };
         let mut f = std::fs::File::create(&file_names.temp_path)?;
         let mut fs = 0;
@@ -66,7 +66,8 @@ pub async fn upload(
             fs += data.len();
 
             // Hard coded 90MB upload limit to play nice with cloudflare.
-            // Actual limit is 100MB however we might not be able to catch it before a chunk might put it over the limit.
+            // Actual limit is 100MB however we might not be able to catch it before a chunk
+            // might put it over the limit.
             if fs > 90_000_000 {
                 match del_file(Path::new(&file_names.temp_path)) {
                     Ok(()) => (),
@@ -74,7 +75,7 @@ pub async fn upload(
                         return Err(error::ErrorInternalServerError(
                             "file larger than 90MB and failed to clean temp file",
                         ))
-                    }
+                    },
                 };
                 return Err(error::ErrorPayloadTooLarge("larger than 100mb limit"));
             }

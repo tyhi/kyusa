@@ -11,9 +11,7 @@ pub mod built_info {
     include!(concat!(env!("OUT_DIR"), "/built.rs"));
 }
 
-async fn p404() -> &'static str {
-    "this resource does not exist."
-}
+async fn p404() -> &'static str { "this resource does not exist." }
 
 fn main() -> std::io::Result<()> {
     if !std::path::Path::new("./uploads").exists() {

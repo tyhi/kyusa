@@ -44,12 +44,16 @@ pub fn init_cfg() -> Config {
         https = "http".to_string()
     }
     let cf_details: Option<CloudflareDetails>;
-    if parse_yn("Do you want to setup CloudFlare integration? This will purge cache when you delete a file.[y/n] ") {
-
+    if parse_yn(
+        "Do you want to setup CloudFlare integration? This will purge cache when you delete a \
+         file.[y/n] ",
+    ) {
         println!("Enter CloudFlare API Key (Permissions needed: Zone.Zone, Zone.Cache Purge):");
-        let cf_api= get_input();
-        let cf_zone= cf_file_purge::get_domain_id(&domain_root, &cf_api).expect("error getting domain id from cloudflare").expect("no id found for that domain");
-        cf_details = Some(CloudflareDetails{cf_zone, cf_api});
+        let cf_api = get_input();
+        let cf_zone = cf_file_purge::get_domain_id(&domain_root, &cf_api)
+            .expect("error getting domain id from cloudflare")
+            .expect("no id found for that domain");
+        cf_details = Some(CloudflareDetails { cf_zone, cf_api });
     } else {
         cf_details = None;
     }
@@ -110,12 +114,12 @@ pub fn load_cfg(db: sled::Db) -> Result<Config, Box<dyn std::error::Error>> {
         Some(config) => {
             let e: Config = bincode::deserialize(&config).unwrap();
             return Ok(e);
-        }
+        },
         None => {
             let e = init_cfg();
             let bin = bincode::serialize(&e)?;
             db.insert(b"cfg", bin)?;
             return Ok(e);
-        }
+        },
     }
 }

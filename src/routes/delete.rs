@@ -26,7 +26,7 @@ pub async fn delete(
         Some(binary) => binary,
         None => {
             return Err(error::ErrorNotFound("this file does not exist"));
-        }
+        },
     };
 
     let data: dbu::FileMetadata = match bincode::deserialize(&binc[..]) {
@@ -64,9 +64,12 @@ pub async fn delete(
         {
             Ok(status) => {
                 if status != http::StatusCode::OK {
-                    return Err(error::ErrorInternalServerError("file has been delete from os, however there was an error purging cache from cloudflare make sure your key has permission"));
+                    return Err(error::ErrorInternalServerError(
+                        "file has been delete from os, however there was an error purging cache \
+                         from cloudflare make sure your key has permission",
+                    ));
                 }
-            }
+            },
             Err(err) => return Err(error::ErrorInternalServerError(err)),
         }
     }
@@ -76,7 +79,8 @@ pub async fn delete(
 pub fn del_file(file_path: &path::Path) -> Result<(), Box<dyn std::error::Error>> {
     fs::remove_file(file_path)?;
 
-    // The unwraps here should never fault because it's impossible with our setup to never have a parent dir.
+    // The unwraps here should never fault because it's impossible with our setup to
+    // never have a parent dir.
     if match file_path.parent() {
         Some(x) => x,
         None => unimplemented!(),
