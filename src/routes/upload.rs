@@ -1,5 +1,6 @@
 use crate::{cfg, dbu};
 use actix_multipart::{Field, Multipart};
+use actix_web::http::HeaderMap;
 use actix_web::{error, post, web, Error, HttpRequest, HttpResponse};
 use futures::StreamExt;
 use serde::Serialize;
@@ -29,22 +30,12 @@ pub async fn upload(
     request: HttpRequest,
 ) -> Result<HttpResponse, Error> {
     if settings.private {
-        match request.headers().get("apikey") {
-            Some(x) => {
-                if settings
-                    .key_details
-                    .get(match x.to_str() {
-                        Ok(x) => x,
-                        Err(e) => return Err(error::ErrorUnauthorized(e)),
-                    })
-                    .is_none()
-                {
-                    return Err(error::ErrorUnauthorized("invalid api key"));
-                }
-            }
-            None => return Err(error::ErrorUnauthorized("no api key supplied")),
-        };
+        match check_header(request.headers(), &settings) {
+            Ok(()) => (),
+            Err(err) => return Err(error::ErrorUnauthorized(err)),
+        }
     }
+
     while let Some(item) = multipart.next().await {
         let mut field = item?;
 
@@ -153,4 +144,23 @@ fn check_name(field: &Field) -> Result<bool, Box<dyn std::error::Error>> {
         return Ok(false);
     }
     return Ok(true);
+}
+
+fn check_header(
+    header: &HeaderMap,
+    settings: &web::Data<cfg::Config>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    if settings
+        .key_details
+        .get(
+            header
+                .get("apikey")
+                .ok_or("apikey header missing")?
+                .to_str()?,
+        )
+        .is_none()
+    {
+        return Err("invalid api key".into());
+    }
+    Ok(())
 }

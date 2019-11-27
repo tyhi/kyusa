@@ -1,4 +1,4 @@
-use actix_web::{web};
+use actix_web::web;
 use sled::Db;
 
 mod cf_file_purge;
