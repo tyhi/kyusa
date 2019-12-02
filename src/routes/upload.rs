@@ -1,6 +1,6 @@
-use crate::{cfg, dbu, routes::delete::del_file};
+use crate::{cfg::GLOBAL_CONFIG, dbu, routes::delete::del_file, GLOBAL_DB};
 use actix_multipart::{Field, Multipart};
-use actix_web::{error, http::HeaderMap, post, web, Error, HttpRequest, HttpResponse};
+use actix_web::{error, http::HeaderMap, post, Error, HttpRequest, HttpResponse};
 use futures::StreamExt;
 use serde::Serialize;
 use std::{fs, io::Write, path::Path};
@@ -22,14 +22,9 @@ struct NamedReturn {
 const RANDOM_FILE_EXT: &'static [&str] = &["png", "jpeg", "jpg", "webm", "gif", "avi", "mp4"];
 
 #[post("/u")]
-pub async fn upload(
-    mut multipart: Multipart,
-    database: web::Data<sled::Db>,
-    settings: web::Data<cfg::Config>,
-    request: HttpRequest,
-) -> Result<HttpResponse, Error> {
-    if settings.private {
-        match check_header(request.headers(), &settings) {
+pub async fn upload(mut multipart: Multipart, request: HttpRequest) -> Result<HttpResponse, Error> {
+    if GLOBAL_CONFIG.read().private {
+        match check_header(request.headers()) {
             Ok(()) => (),
             Err(err) => return Err(error::ErrorUnauthorized(err)),
         }
@@ -88,7 +83,7 @@ pub async fn upload(
             Err(err) => return Err(error::ErrorInternalServerError(err)),
         };
 
-        match database.insert(&file_names.ffn.into_bytes(), ins) {
+        match GLOBAL_DB.insert(&file_names.ffn.into_bytes(), ins) {
             Ok(x) => x,
             Err(err) => return Err(error::ErrorInternalServerError(err)),
         };
@@ -97,11 +92,18 @@ pub async fn upload(
         return Ok(HttpResponse::Ok().json(&UploadResp {
             url: format!(
                 "{}://{}{}.{}",
-                settings.https, settings.domain, file_names.uri, file_names.ext
+                GLOBAL_CONFIG.read().https,
+                GLOBAL_CONFIG.read().domain,
+                file_names.uri,
+                file_names.ext
             ),
             delete_url: format!(
                 "{}://{}/d{}.{}?del={}",
-                settings.https, settings.domain, file_names.uri, file_names.ext, del_key
+                GLOBAL_CONFIG.read().https,
+                GLOBAL_CONFIG.read().domain,
+                file_names.uri,
+                file_names.ext,
+                del_key
             ),
         }));
     }
@@ -162,11 +164,9 @@ fn check_name(field: &Field) -> Result<bool, Box<dyn std::error::Error>> {
     return Ok(true);
 }
 
-fn check_header(
-    header: &HeaderMap,
-    settings: &web::Data<cfg::Config>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    if settings
+fn check_header(header: &HeaderMap) -> Result<(), Box<dyn std::error::Error>> {
+    if GLOBAL_CONFIG
+        .read()
         .key_details
         .get(
             header

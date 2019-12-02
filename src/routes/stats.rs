@@ -1,5 +1,5 @@
-use crate::built_info;
-use actix_web::{get, web, HttpResponse};
+use crate::{built_info, GLOBAL_DB};
+use actix_web::{get, HttpResponse};
 use serde::Serialize;
 
 #[derive(Serialize)]
@@ -10,9 +10,9 @@ struct Stats {
 }
 
 #[get("/stats")]
-pub async fn stats(database: web::Data<sled::Db>) -> HttpResponse {
+pub async fn stats() -> HttpResponse {
     HttpResponse::Ok().json(Stats {
-        files: database.len() - 1,
+        files: GLOBAL_DB.len(),
         version: format!(
             "{} {}",
             built_info::PKG_VERSION,

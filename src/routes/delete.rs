@@ -1,4 +1,4 @@
-use crate::{cf_file_purge, cfg, dbu};
+use crate::{cf_file_purge, cfg::GLOBAL_CONFIG, dbu, GLOBAL_DB};
 use actix_web::{error, get, web, Error, HttpResponse};
 use serde::Deserialize;
 use std::{fs, path};
@@ -16,10 +16,8 @@ pub struct DeleteFile {
 pub async fn delete(
     path: web::Path<FilePath>,
     del: web::Query<DeleteFile>,
-    database: web::Data<sled::Db>,
-    settings: web::Data<cfg::Config>,
 ) -> Result<HttpResponse, Error> {
-    let binc = match match database.get(format!("{}{}", path.folder, path.file)) {
+    let binc = match match GLOBAL_DB.get(format!("{}{}", path.folder, path.file)) {
         Ok(x) => x,
         Err(err) => return Err(error::ErrorInternalServerError(err)),
     } {
@@ -38,7 +36,7 @@ pub async fn delete(
         return Err(error::ErrorUnauthorized("invalid delete key"));
     }
 
-    match database.remove(format!("{}{}", path.folder, path.file).into_bytes()) {
+    match GLOBAL_DB.remove(format!("{}{}", path.folder, path.file).into_bytes()) {
         Ok(x) => x,
         Err(err) => return Err(error::ErrorInternalServerError(err)),
     };
@@ -50,15 +48,28 @@ pub async fn delete(
         Err(err) => return Err(error::ErrorInternalServerError(err)),
     }
 
-    if settings.cloudflare_details.is_some() == true {
+    if GLOBAL_CONFIG.read().cloudflare_details.is_some() == true {
         let url = format!(
             "{}://{}/{}/{}",
-            settings.https, settings.domain, path.folder, path.file
+            GLOBAL_CONFIG.read().https,
+            GLOBAL_CONFIG.read().domain,
+            path.folder,
+            path.file
         );
         match cf_file_purge::purge_file(
-            &settings.cloudflare_details.as_ref().unwrap().cf_zone,
+            &GLOBAL_CONFIG
+                .read()
+                .cloudflare_details
+                .as_ref()
+                .unwrap()
+                .cf_zone,
             &url,
-            &settings.cloudflare_details.as_ref().unwrap().cf_api,
+            &GLOBAL_CONFIG
+                .read()
+                .cloudflare_details
+                .as_ref()
+                .unwrap()
+                .cf_api,
         )
         .await
         {
