@@ -1,7 +1,15 @@
 use crate::cf_file_purge;
 use addr::DomainName;
+use once_cell::sync::Lazy;
+use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, io};
+use std::{
+    collections::HashMap,
+    fs::File,
+    io,
+    io::{Read, Write},
+    path::Path,
+};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Config {
@@ -22,6 +30,33 @@ pub struct CloudflareDetails {
 pub struct KeyDetails {
     pub name: String,
     pub admin: bool,
+}
+
+pub static GLOBAL_CONFIG: Lazy<RwLock<Config>> = Lazy::new(|| RwLock::new(Config::init()));
+
+impl Config {
+    pub fn init() -> Self {}
+    pub fn load() -> Result<Self, Box<dyn std::error::Error>> {
+        if !Path::new("./config.json").exists() {
+            let config = init_cfg();
+
+            let content = serde_json::to_string_pretty(&config)?;
+            std::fs::write("./config.json", content)?;
+
+            return Ok(config);
+        }
+        let mut file = File::open("./config.json")?;
+        let mut contents = String::new();
+        file.read_to_string(&mut contents)?;
+
+        let data: Config = serde_json::from_str(&contents).unwrap();
+        Ok(data)
+    }
+
+    pub fn save(self, config: &Config) {
+        let content = serde_json::to_string_pretty(config).unwrap();
+        std::fs::write("./config.json", content).unwrap();
+    }
 }
 
 pub fn init_cfg() -> Config {

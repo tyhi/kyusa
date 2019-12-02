@@ -22,14 +22,13 @@ fn main() -> std::io::Result<()> {
         std::fs::create_dir_all("./tmp")?;
     }
 
-    let db = Db::open("db").unwrap();
+    // create
 
-    let config = cfg::load_cfg(db.clone()).unwrap();
+    let db = Db::open("db").unwrap();
 
     actix_web::HttpServer::new(move || {
         actix_web::App::new()
             .data(db.clone())
-            .data(config.clone())
             .service(routes::routes())
             .default_service(web::resource("").route(web::get().to(p404)))
     })
