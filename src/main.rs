@@ -1,4 +1,6 @@
+use crate::cfg::GLOBAL_CONFIG;
 use actix_web::web;
+use once_cell::sync::Lazy;
 use sled::Db;
 
 mod cf_file_purge;
@@ -11,6 +13,8 @@ pub mod built_info {
     include!(concat!(env!("OUT_DIR"), "/built.rs"));
 }
 
+pub static GLOBAL_DB: Lazy<Db> = Lazy::new(|| Db::open("db").unwrap());
+
 async fn p404() -> &'static str { "this resource does not exist." }
 
 fn main() -> std::io::Result<()> {
@@ -22,16 +26,16 @@ fn main() -> std::io::Result<()> {
         std::fs::create_dir_all("./tmp")?;
     }
 
-    // create
+    // This is just warming up the database before it could get used.
+    if let Err(why) = GLOBAL_DB.flush() {
+        println!("{:?}", why);
+    }
 
-    let db = Db::open("db").unwrap();
-
-    actix_web::HttpServer::new(move || {
+    actix_web::HttpServer::new(|| {
         actix_web::App::new()
-            .data(db.clone())
             .service(routes::routes())
             .default_service(web::resource("").route(web::get().to(p404)))
     })
-    .bind("0.0.0.0:3000")?
+    .bind(format!("0.0.0.0:{}", GLOBAL_CONFIG.read().port))?
     .run()
 }
