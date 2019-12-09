@@ -1,6 +1,5 @@
 use actix_web::{web, Scope};
 
-pub mod auth;
 pub mod delete;
 pub mod serve;
 pub mod stats;
