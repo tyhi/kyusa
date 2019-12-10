@@ -1,6 +1,6 @@
 use crate::{cfg::GLOBAL_CONFIG, dbu, routes::delete::del_file, GLOBAL_DB};
 use actix_multipart::{Field, Multipart};
-use actix_web::{error, http::HeaderMap, post, Error, HttpRequest, HttpResponse};
+use actix_web::{error, http::HeaderMap, post, HttpRequest, HttpResponse, Result};
 use futures::StreamExt;
 use serde::Serialize;
 use std::{fs, io::Write, path::Path};
@@ -22,16 +22,19 @@ struct NamedReturn {
 const RANDOM_FILE_EXT: &'static [&str] = &["png", "jpeg", "jpg", "webm", "gif", "avi", "mp4"];
 
 #[post("/u")]
-pub async fn upload(mut multipart: Multipart, request: HttpRequest) -> Result<HttpResponse, Error> {
+pub async fn upload(
+    mut multipart: Multipart,
+    request: HttpRequest,
+) -> Result<HttpResponse, error::Error> {
     if GLOBAL_CONFIG.read().private {
-        match check_header(request.headers()) {
-            Ok(()) => (),
-            Err(err) => return Err(error::ErrorUnauthorized(err)),
+        if let Err(why) = check_header(request.headers()) {
+            return Err(error::ErrorUnauthorized(why));
         }
     }
 
     while let Some(item) = multipart.next().await {
         let mut field = item?;
+
         match check_name(&field) {
             Ok(valid) => {
                 if !valid {
@@ -64,14 +67,12 @@ pub async fn upload(mut multipart: Multipart, request: HttpRequest) -> Result<Ht
             // Actual limit is 100MB however we might not be able to catch it before a chunk
             // might put it over the limit.
             if fs > 90_000_000 {
-                match del_file(Path::new(&file_names.temp_path)) {
-                    Ok(()) => (),
-                    Err(_) => {
-                        return Err(error::ErrorInternalServerError(
-                            "file larger than 90MB and failed to clean temp file",
-                        ))
-                    },
-                };
+                if let Err(err) = del_file(Path::new(&file_names.temp_path)) {
+                    return Err(error::ErrorInternalServerError(format!(
+                        "file larger than 90MB & failed to clean temp file: {}",
+                        err
+                    )));
+                }
                 return Err(error::ErrorPayloadTooLarge("larger than 100mb limit"));
             }
         }
@@ -83,12 +84,12 @@ pub async fn upload(mut multipart: Multipart, request: HttpRequest) -> Result<Ht
             Err(err) => return Err(error::ErrorInternalServerError(err)),
         };
 
-        match GLOBAL_DB.insert(&file_names.ffn.into_bytes(), ins) {
-            Ok(x) => x,
-            Err(err) => return Err(error::ErrorInternalServerError(err)),
-        };
+        if let Err(err) = GLOBAL_DB.insert(&file_names.ffn.into_bytes(), ins) {
+            return Err(error::ErrorInternalServerError(err));
+        }
 
         std::fs::rename(&file_names.temp_path, &file_names.new_path)?;
+
         return Ok(HttpResponse::Ok().json(&UploadResp {
             url: format!(
                 "{}://{}{}.{}",

@@ -1,5 +1,5 @@
 use crate::{cf_file_purge, cfg::GLOBAL_CONFIG, dbu, GLOBAL_DB};
-use actix_web::{error, get, web, Error, HttpResponse};
+use actix_web::{error, get, web, HttpResponse, Result};
 use serde::Deserialize;
 use std::{fs, path};
 
@@ -16,7 +16,7 @@ pub struct DeleteFile {
 pub async fn delete(
     path: web::Path<FilePath>,
     del: web::Query<DeleteFile>,
-) -> Result<HttpResponse, Error> {
+) -> Result<HttpResponse> {
     let binc = match match GLOBAL_DB.get(format!("{}{}", path.folder, path.file)) {
         Ok(x) => x,
         Err(err) => return Err(error::ErrorInternalServerError(err)),
@@ -74,7 +74,7 @@ pub async fn delete(
         .await
         {
             Ok(status) => {
-                if status != http::StatusCode::OK {
+                if status != isahc::http::StatusCode::OK {
                     return Err(error::ErrorInternalServerError(
                         "file has been delete from os, however there was an error purging cache \
                          from cloudflare make sure your key has permission",

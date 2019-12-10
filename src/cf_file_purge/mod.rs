@@ -25,7 +25,7 @@ pub async fn purge_file(
     zone: &str,
     url: &String,
     key: &str,
-) -> Result<http::StatusCode, Box<dyn std::error::Error>> {
+) -> Result<isahc::http::StatusCode, Box<dyn std::error::Error>> {
     let files = PurgeFiles { files: vec![url] };
     let resp = Request::post(format!(
         "https://api.cloudflare.com/client/v4/zones/{}/purge_cache",

@@ -1,5 +1,5 @@
 use crate::{built_info, GLOBAL_DB};
-use actix_web::{get, HttpResponse};
+use actix_web::{get, HttpResponse, Result};
 use serde::Serialize;
 
 #[derive(Serialize)]
@@ -10,8 +10,8 @@ struct Stats {
 }
 
 #[get("/stats")]
-pub async fn stats() -> HttpResponse {
-    HttpResponse::Ok().json(Stats {
+pub async fn stats() -> Result<HttpResponse> {
+    Ok(HttpResponse::Ok().json(Stats {
         files: GLOBAL_DB.len(),
         version: format!(
             "{} {}",
@@ -19,5 +19,5 @@ pub async fn stats() -> HttpResponse {
             built_info::GIT_VERSION.map_or_else(|| "".to_owned(), |v| format!("(git {})", v))
         ),
         rustc: built_info::RUSTC_VERSION.to_owned(),
-    })
+    }))
 }

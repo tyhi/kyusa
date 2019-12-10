@@ -1,5 +1,5 @@
 use actix_files::NamedFile;
-use actix_web::{error, get, web, Error};
+use actix_web::{get, web, Result};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -9,13 +9,9 @@ pub struct FilePath {
 }
 
 #[get("/{folder}/{file}")]
-pub async fn serve(info: web::Path<FilePath>) -> Result<NamedFile, Error> {
-    let file = format!("./uploads/{}/{}", info.folder, info.file);
-
-    match NamedFile::open(file) {
-        Ok(e) => Ok(e),
-        Err(_e) => Err(error::ErrorNotFound(
-            "the file you are looking for is either deleted or never existed in the first place",
-        )),
-    }
+pub async fn serve(info: web::Path<FilePath>) -> Result<NamedFile> {
+    Ok(NamedFile::open(format!(
+        "./uploads/{}/{}",
+        info.folder, info.file
+    ))?)
 }
