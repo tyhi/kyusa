@@ -1,4 +1,7 @@
-use crate::{cf_file_purge, cfg::GLOBAL_CONFIG, dbu, GLOBAL_DB};
+use crate::{
+    utils::{config::Config, database},
+    GLOBAL_DB,
+};
 use actix_web::{error, get, web, HttpResponse, Result};
 use serde::Deserialize;
 use std::{fs, path};
@@ -14,20 +17,16 @@ pub struct DeleteFile {
 }
 #[get("/d/{folder}/{file}")]
 pub async fn delete(
+    config: web::Data<Config>,
     path: web::Path<FilePath>,
     del: web::Query<DeleteFile>,
 ) -> Result<HttpResponse> {
-    let binc = match match GLOBAL_DB.get(format!("{}{}", path.folder, path.file)) {
-        Ok(x) => x,
+    let binc = match database::get_entry(&format!("{}{}", path.folder, path.file)) {
+        Ok(binc) => binc,
         Err(err) => return Err(error::ErrorInternalServerError(err)),
-    } {
-        Some(binary) => binary,
-        None => {
-            return Err(error::ErrorNotFound("this file does not exist"));
-        },
     };
 
-    let data: dbu::FileMetadata = match bincode::deserialize(&binc[..]) {
+    let data: database::FileMetadata = match database::de_ser(&binc) {
         Ok(x) => x,
         Err(err) => return Err(error::ErrorInternalServerError(err)),
     };
@@ -43,38 +42,24 @@ pub async fn delete(
 
     let file_path = path::Path::new(&data.file_path);
 
-    match del_file(file_path) {
-        Ok(_) => (),
-        Err(err) => return Err(error::ErrorInternalServerError(err)),
+    if let Err(err) = del_file(file_path) {
+        return Err(error::ErrorInternalServerError(err));
     }
 
-    if GLOBAL_CONFIG.read().cloudflare_details.is_some() == true {
+    if config.cloudflare_details.is_some() == true {
         let url = format!(
             "{}://{}/{}/{}",
-            GLOBAL_CONFIG.read().https,
-            GLOBAL_CONFIG.read().domain,
-            path.folder,
-            path.file
+            config.https, config.domain, path.folder, path.file
         );
-        match cf_file_purge::purge_file(
-            &GLOBAL_CONFIG
-                .read()
-                .cloudflare_details
-                .as_ref()
-                .unwrap()
-                .cf_zone,
+        match cfp_rs::purge_file(
+            &config.cloudflare_details.as_ref().unwrap().cf_zone,
             &url,
-            &GLOBAL_CONFIG
-                .read()
-                .cloudflare_details
-                .as_ref()
-                .unwrap()
-                .cf_api,
+            &config.cloudflare_details.as_ref().unwrap().cf_api,
         )
         .await
         {
             Ok(status) => {
-                if status != isahc::http::StatusCode::OK {
+                if status != 200 {
                     return Err(error::ErrorInternalServerError(
                         "file has been delete from os, however there was an error purging cache \
                          from cloudflare make sure your key has permission",
@@ -90,20 +75,14 @@ pub async fn delete(
 pub fn del_file(file_path: &path::Path) -> Result<(), Box<dyn std::error::Error>> {
     fs::remove_file(file_path)?;
 
-    // The unwraps here should never fault because it's impossible with our setup to
-    // never have a parent dir.
-    if match file_path.parent() {
-        Some(x) => x,
-        None => unimplemented!(),
-    }
-    .read_dir()?
-    .next()
-    .is_none()
+    if file_path
+        .parent()
+        .ok_or("no parent directory")?
+        .read_dir()?
+        .next()
+        .is_none()
     {
-        fs::remove_dir(match file_path.parent() {
-            Some(x) => x,
-            None => unimplemented!(),
-        })?;
-    };
+        fs::remove_dir(file_path.parent().ok_or("no parent directory")?)?;
+    }
     Ok(())
 }

@@ -1,12 +1,10 @@
-use crate::cfg::GLOBAL_CONFIG;
 use actix_web::web;
 use once_cell::sync::Lazy;
 use sled::Db;
+use utils::config::Config;
 
-mod cf_file_purge;
-mod cfg;
-mod dbu;
 mod routes;
+mod utils;
 
 pub mod built_info {
     // The file has been placed there by the build script.
@@ -19,6 +17,9 @@ async fn p404() -> &'static str { "this resource does not exist." }
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
+    let config = Config::load().await.unwrap();
+
+    let port = config.port.clone();
     if !std::path::Path::new("./uploads").exists() {
         std::fs::create_dir_all("./uploads")?;
     }
@@ -32,12 +33,13 @@ async fn main() -> std::io::Result<()> {
         println!("{:?}", why);
     }
 
-    actix_web::HttpServer::new(|| {
+    actix_web::HttpServer::new(move || {
         actix_web::App::new()
+            .data(config.clone())
             .service(routes::routes())
             .default_service(web::resource("").route(web::get().to(p404)))
     })
-    .bind(format!("0.0.0.0:{}", GLOBAL_CONFIG.read().port))?
+    .bind(format!("0.0.0.0:{}", port))?
     .start()
     .await
 }

@@ -13,9 +13,7 @@ static MSG: &[u8] = &[
 ];
 
 #[get("/k")]
-pub async fn k() -> Result<&'static str> {
-    Ok(from_utf8(MSG)?)
-}
+pub async fn k() -> Result<&'static str> { Ok(from_utf8(MSG)?) }
 
 pub fn routes() -> Scope {
     web::scope("/")
