@@ -1,4 +1,4 @@
-use crate::{cfg::Config, dbu, routes::delete::del_file, GLOBAL_DB};
+use crate::{utils::{config::Config, database}, routes::delete::del_file, GLOBAL_DB};
 use actix_multipart::{Field, Multipart};
 use actix_web::{error, http::HeaderMap, post, web::Data, HttpRequest, HttpResponse, Result};
 use futures::StreamExt;
@@ -80,7 +80,7 @@ pub async fn upload(
 
         let del_key = nanoid::simple();
 
-        let ins = match dbu::generate_insert_binary(&file_names.new_path, &del_key) {
+        let ins = match database::generate_insert_binary(&file_names.new_path, &del_key) {
             Ok(x) => x,
             Err(err) => return Err(error::ErrorInternalServerError(err)),
         };

@@ -1,4 +1,4 @@
-use crate::{cfg::Config, dbu, GLOBAL_DB};
+use crate::{utils::{config::Config, database}, GLOBAL_DB};
 use actix_web::{error, get, web, HttpResponse, Result};
 use serde::Deserialize;
 use std::{fs, path};
@@ -28,7 +28,7 @@ pub async fn delete(
         },
     };
 
-    let data: dbu::FileMetadata = match bincode::deserialize(&binc[..]) {
+    let data: database::FileMetadata = match bincode::deserialize(&binc[..]) {
         Ok(x) => x,
         Err(err) => return Err(error::ErrorInternalServerError(err)),
     };
