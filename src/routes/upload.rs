@@ -37,10 +37,12 @@ pub async fn upload(
         }
     }
 
+    // Handle multipart upload(s)
     while let Some(item) = multipart.next().await {
         let mut field = item?;
 
-        match check_name(&field) {
+        // Only allow multipart upload with 'file' key.
+        match check_name(&field, config.multipart_name.as_str()) {
             Ok(valid) => {
                 if !valid {
                     continue;
@@ -49,6 +51,7 @@ pub async fn upload(
             Err(e) => return Err(error::ErrorInternalServerError(e)),
         };
 
+        // Create the file_names required.
         let file_names = match gen_upload_file(&field) {
             Ok(file_names) => file_names,
             Err(err) => {
@@ -59,9 +62,13 @@ pub async fn upload(
             },
         };
 
+        // Create the temp. file to work with wile we iter over all the chunks.
         let mut f = std::fs::File::create(&file_names.temp_path)?;
+
+        // fs keeps track of how big the file is.
         let mut fs = 0;
 
+        // iter over all chunks we get from client.
         while let Some(chunk) = field.next().await {
             let data = chunk?;
             let mut pos = 0;
@@ -85,17 +92,22 @@ pub async fn upload(
             }
         }
 
+        // Generates the delete key.
         let del_key = nanoid::simple();
 
+        // TODO: Combine/refractor these two functions.
+        // Creates the Vec<u8> to be used in inserting into the sled db.
         let ins = match database::generate_insert_binary(&file_names.new_path, &del_key) {
             Ok(x) => x,
             Err(err) => return Err(error::ErrorInternalServerError(err)),
         };
 
+        // Insert binary into database.
         if let Err(err) = GLOBAL_DB.insert(&file_names.ffn.into_bytes(), ins) {
             return Err(error::ErrorInternalServerError(err));
         }
 
+        // We rename in case something goes wrong.
         std::fs::rename(&file_names.temp_path, &file_names.new_path)?;
 
         return Ok(HttpResponse::Ok().json(&UploadResp {
@@ -112,6 +124,7 @@ pub async fn upload(
     Err(error::ErrorBadRequest("no files uploaded"))
 }
 
+// Takes the input file name and generates the correct paths needed.
 fn gen_upload_file(field: &Field) -> Result<NamedReturn, Box<dyn std::error::Error>> {
     let content = field.content_disposition().ok_or("error getting content")?;
     let path = std::path::Path::new(content.get_filename().ok_or("error getting filename")?);
@@ -127,13 +140,16 @@ fn gen_upload_file(field: &Field) -> Result<NamedReturn, Box<dyn std::error::Err
         .to_str()
         .ok_or("unable to convert to str")?;
 
+    // This loop makes sure that we don't have collision in file names.
     loop {
+        // Cheaking to see if our file needs to have random name.
         let name = match RANDOM_FILE_EXT.iter().any(|x| x == &extension) {
             false => file_name.to_owned(),
             true => nanoid::generate(6),
         };
 
-        let folder_dir = nanoid::generate(2);
+        // Creating our random folder name.
+        let folder_dir = nanoid::generate(3);
 
         let path = format!("./uploads/{}/{}.{}", folder_dir, name, extension);
 
@@ -153,19 +169,21 @@ fn gen_upload_file(field: &Field) -> Result<NamedReturn, Box<dyn std::error::Err
     }
 }
 
-fn check_name(field: &Field) -> Result<bool, Box<dyn std::error::Error>> {
+// check_name checks to make sure we have a multipart name.
+fn check_name(field: &Field, name: &str) -> Result<bool, Box<dyn std::error::Error>> {
     if field
         .content_disposition()
         .ok_or("error getting disposition")?
         .get_name()
         .ok_or("error getting multipart name")?
-        != "file"
+        != name
     {
         return Ok(false);
     }
     return Ok(true);
 }
 
+// Checks headers to see if key is valid.
 fn check_header(
     header: &HeaderMap,
     config: &Data<Config>,

@@ -9,6 +9,7 @@ pub struct Config {
     pub https: String,
     pub private: bool,
     pub port: String,
+    pub multipart_name: String,
     pub key_details: HashMap<String, KeyDetails>,
     pub cloudflare_details: Option<CloudflareDetails>,
 }
@@ -114,6 +115,7 @@ async fn init_cfg() -> Config {
         domain_root,
         port,
         https,
+        multipart_name: "file".to_owned(),
         private,
         key_details: api_keys,
         cloudflare_details: cf_details,
