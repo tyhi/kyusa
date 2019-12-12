@@ -1,4 +1,4 @@
-use crate::{cf_file_purge, cfg::GLOBAL_CONFIG, dbu, GLOBAL_DB};
+use crate::{cfg::Config, dbu, GLOBAL_DB};
 use actix_web::{error, get, web, HttpResponse, Result};
 use serde::Deserialize;
 use std::{fs, path};
@@ -14,6 +14,7 @@ pub struct DeleteFile {
 }
 #[get("/d/{folder}/{file}")]
 pub async fn delete(
+    config: web::Data<Config>,
     path: web::Path<FilePath>,
     del: web::Query<DeleteFile>,
 ) -> Result<HttpResponse> {
@@ -48,33 +49,20 @@ pub async fn delete(
         Err(err) => return Err(error::ErrorInternalServerError(err)),
     }
 
-    if GLOBAL_CONFIG.read().cloudflare_details.is_some() == true {
+    if config.cloudflare_details.is_some() == true {
         let url = format!(
             "{}://{}/{}/{}",
-            GLOBAL_CONFIG.read().https,
-            GLOBAL_CONFIG.read().domain,
-            path.folder,
-            path.file
+            config.https, config.domain, path.folder, path.file
         );
-        match cf_file_purge::purge_file(
-            &GLOBAL_CONFIG
-                .read()
-                .cloudflare_details
-                .as_ref()
-                .unwrap()
-                .cf_zone,
+        match cfp_rs::purge_file(
+            &config.cloudflare_details.as_ref().unwrap().cf_zone,
             &url,
-            &GLOBAL_CONFIG
-                .read()
-                .cloudflare_details
-                .as_ref()
-                .unwrap()
-                .cf_api,
+            &config.cloudflare_details.as_ref().unwrap().cf_api,
         )
         .await
         {
             Ok(status) => {
-                if status != isahc::http::StatusCode::OK {
+                if status != 200 {
                     return Err(error::ErrorInternalServerError(
                         "file has been delete from os, however there was an error purging cache \
                          from cloudflare make sure your key has permission",

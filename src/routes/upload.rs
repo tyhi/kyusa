@@ -1,6 +1,6 @@
-use crate::{cfg::GLOBAL_CONFIG, dbu, routes::delete::del_file, GLOBAL_DB};
+use crate::{cfg::Config, dbu, routes::delete::del_file, GLOBAL_DB};
 use actix_multipart::{Field, Multipart};
-use actix_web::{error, http::HeaderMap, post, HttpRequest, HttpResponse, Result};
+use actix_web::{error, http::HeaderMap, post, web::Data, HttpRequest, HttpResponse, Result};
 use futures::StreamExt;
 use serde::Serialize;
 use std::{fs, io::Write, path::Path};
@@ -24,10 +24,11 @@ const RANDOM_FILE_EXT: &'static [&str] = &["png", "jpeg", "jpg", "webm", "gif", 
 #[post("/u")]
 pub async fn upload(
     mut multipart: Multipart,
+    config: Data<Config>,
     request: HttpRequest,
 ) -> Result<HttpResponse, error::Error> {
-    if GLOBAL_CONFIG.read().private {
-        if let Err(why) = check_header(request.headers()) {
+    if config.private {
+        if let Err(why) = check_header(request.headers(), &config) {
             return Err(error::ErrorUnauthorized(why));
         }
     }
@@ -93,18 +94,11 @@ pub async fn upload(
         return Ok(HttpResponse::Ok().json(&UploadResp {
             url: format!(
                 "{}://{}{}.{}",
-                GLOBAL_CONFIG.read().https,
-                GLOBAL_CONFIG.read().domain,
-                file_names.uri,
-                file_names.ext
+                config.https, config.domain, file_names.uri, file_names.ext
             ),
             delete_url: format!(
                 "{}://{}/d{}.{}?del={}",
-                GLOBAL_CONFIG.read().https,
-                GLOBAL_CONFIG.read().domain,
-                file_names.uri,
-                file_names.ext,
-                del_key
+                config.https, config.domain, file_names.uri, file_names.ext, del_key
             ),
         }));
     }
@@ -165,9 +159,11 @@ fn check_name(field: &Field) -> Result<bool, Box<dyn std::error::Error>> {
     return Ok(true);
 }
 
-fn check_header(header: &HeaderMap) -> Result<(), Box<dyn std::error::Error>> {
-    if GLOBAL_CONFIG
-        .read()
+fn check_header(
+    header: &HeaderMap,
+    config: &Data<Config>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    if config
         .key_details
         .get(
             header

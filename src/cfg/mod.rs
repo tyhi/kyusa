@@ -1,7 +1,4 @@
-use crate::cf_file_purge;
 use addr::DomainName;
-use once_cell::sync::Lazy;
-use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs::File, io, io::Read, path::Path};
 
@@ -27,14 +24,13 @@ pub struct KeyDetails {
     pub admin: bool,
 }
 
-pub static GLOBAL_CONFIG: Lazy<RwLock<Config>> = Lazy::new(|| RwLock::new(Config::load().unwrap()));
-
 impl Config {
-    pub fn load() -> Result<Self, Box<dyn std::error::Error>> {
+    pub async fn load() -> Result<Self, Box<dyn std::error::Error>> {
         if !Path::new("./config.json").exists() {
-            let config = init_cfg();
+            let config = init_cfg().await;
 
             let content = serde_json::to_string_pretty(&config)?;
+
             std::fs::write("./config.json", content)?;
 
             return Ok(config);
@@ -55,7 +51,7 @@ impl Config {
     }
 }
 
-pub fn init_cfg() -> Config {
+pub async fn init_cfg() -> Config {
     println!("Enter port to be used to host web server:");
     let port = get_input();
 
@@ -84,9 +80,9 @@ pub fn init_cfg() -> Config {
     ) {
         println!("Enter CloudFlare API Key (Permissions needed: Zone.Zone, Zone.Cache Purge):");
         let cf_api = get_input();
-        let cf_zone = cf_file_purge::get_domain_id(&domain_root, &cf_api)
-            .expect("error getting domain id from cloudflare")
-            .expect("no id found for that domain");
+        let cf_zone = cfp_rs::get_domain_id(&domain_root, &cf_api)
+            .await
+            .expect("error getting domain id from cloudflare");
         cf_details = Some(CloudflareDetails { cf_zone, cf_api });
     } else {
         cf_details = None;
