@@ -2,6 +2,7 @@ use addr::DomainName;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs::File, io, io::Read, path::Path};
 
+#[serde(rename_all = "PascalCase")]
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Config {
     pub domain: String,
@@ -13,12 +14,14 @@ pub struct Config {
     pub key_details: HashMap<String, KeyDetails>,
     pub cloudflare_details: Option<CloudflareDetails>,
 }
-
+#[serde(rename_all = "PascalCase")]
 #[derive(Serialize, Deserialize, Clone)]
 pub struct CloudflareDetails {
     pub cf_zone: String,
     pub cf_api: String,
 }
+
+#[serde(rename_all = "PascalCase")]
 #[derive(Serialize, Deserialize, Clone)]
 pub struct KeyDetails {
     pub name: String,

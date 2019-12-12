@@ -33,5 +33,3 @@ where
     let data: T = bincode::deserialize(&binc[..])?;
     Ok(data)
 }
-
-pub fn insert(key: &String, val: &String) {}
