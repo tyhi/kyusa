@@ -1,4 +1,8 @@
-use crate::{utils::{config::Config, database}, routes::delete::del_file, GLOBAL_DB};
+use crate::{
+    routes::delete::del_file,
+    utils::{config::Config, database},
+    GLOBAL_DB,
+};
 use actix_multipart::{Field, Multipart};
 use actix_web::{error, http::HeaderMap, post, web::Data, HttpRequest, HttpResponse, Result};
 use futures::StreamExt;

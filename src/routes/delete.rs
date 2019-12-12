@@ -1,4 +1,7 @@
-use crate::{utils::{config::Config, database}, GLOBAL_DB};
+use crate::{
+    utils::{config::Config, database},
+    GLOBAL_DB,
+};
 use actix_web::{error, get, web, HttpResponse, Result};
 use serde::Deserialize;
 use std::{fs, path};
