@@ -21,17 +21,12 @@ pub async fn delete(
     path: web::Path<FilePath>,
     del: web::Query<DeleteFile>,
 ) -> Result<HttpResponse> {
-    let binc = match match GLOBAL_DB.get(format!("{}{}", path.folder, path.file)) {
-        Ok(x) => x,
+    let binc = match database::get_entry(&format!("{}{}", path.folder, path.file)) {
+        Ok(binc) => binc,
         Err(err) => return Err(error::ErrorInternalServerError(err)),
-    } {
-        Some(binary) => binary,
-        None => {
-            return Err(error::ErrorNotFound("this file does not exist"));
-        },
     };
 
-    let data: database::FileMetadata = match bincode::deserialize(&binc[..]) {
+    let data: database::FileMetadata = match database::de_ser(&binc) {
         Ok(x) => x,
         Err(err) => return Err(error::ErrorInternalServerError(err)),
     };
@@ -47,9 +42,8 @@ pub async fn delete(
 
     let file_path = path::Path::new(&data.file_path);
 
-    match del_file(file_path) {
-        Ok(_) => (),
-        Err(err) => return Err(error::ErrorInternalServerError(err)),
+    if let Err(err) = del_file(file_path) {
+        return Err(error::ErrorInternalServerError(err));
     }
 
     if config.cloudflare_details.is_some() == true {
@@ -81,20 +75,14 @@ pub async fn delete(
 pub fn del_file(file_path: &path::Path) -> Result<(), Box<dyn std::error::Error>> {
     fs::remove_file(file_path)?;
 
-    // The unwraps here should never fault because it's impossible with our setup to
-    // never have a parent dir.
-    if match file_path.parent() {
-        Some(x) => x,
-        None => unimplemented!(),
-    }
-    .read_dir()?
-    .next()
-    .is_none()
+    if file_path
+        .parent()
+        .ok_or("no parent directory")?
+        .read_dir()?
+        .next()
+        .is_none()
     {
-        fs::remove_dir(match file_path.parent() {
-            Some(x) => x,
-            None => unimplemented!(),
-        })?;
-    };
+        fs::remove_dir(file_path.parent().ok_or("no parent directory")?)?;
+    }
     Ok(())
 }

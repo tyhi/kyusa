@@ -1,3 +1,4 @@
+use crate::GLOBAL_DB;
 use bincode::serialize;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -20,3 +21,17 @@ pub fn generate_insert_binary(
     };
     Ok(serialize(&metadata)?)
 }
+
+pub fn get_entry(key: &String) -> Result<sled::IVec, Box<dyn std::error::Error>> {
+    Ok(GLOBAL_DB.get(key)?.ok_or("no key found")?)
+}
+
+pub fn de_ser<'de, T>(binc: &'de sled::IVec) -> Result<T, Box<dyn std::error::Error>>
+where
+    T: Deserialize<'de>,
+{
+    let data: T = bincode::deserialize(&binc[..])?;
+    Ok(data)
+}
+
+pub fn insert(key: &String, val: &String) {}

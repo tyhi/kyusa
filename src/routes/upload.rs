@@ -48,6 +48,7 @@ pub async fn upload(
             },
             Err(e) => return Err(error::ErrorInternalServerError(e)),
         };
+
         let file_names = match gen_upload_file(&field) {
             Ok(file_names) => file_names,
             Err(err) => {
@@ -57,8 +58,10 @@ pub async fn upload(
                 )))
             },
         };
+
         let mut f = std::fs::File::create(&file_names.temp_path)?;
         let mut fs = 0;
+
         while let Some(chunk) = field.next().await {
             let data = chunk?;
             let mut pos = 0;
@@ -118,21 +121,21 @@ fn gen_upload_file(field: &Field) -> Result<NamedReturn, Box<dyn std::error::Err
         .ok_or("missing filename")?
         .to_str()
         .ok_or("error converting to str")?;
-    let ext = path
+    let extension = path
         .extension()
         .ok_or("unable to get ext")?
         .to_str()
         .ok_or("unable to convert to str")?;
 
     loop {
-        let name = match RANDOM_FILE_EXT.iter().any(|x| x == &ext) {
+        let name = match RANDOM_FILE_EXT.iter().any(|x| x == &extension) {
             false => file_name.to_owned(),
             true => nanoid::generate(6),
         };
 
         let folder_dir = nanoid::generate(2);
 
-        let path = format!("./uploads/{}/{}.{}", folder_dir, name, ext);
+        let path = format!("./uploads/{}/{}.{}", folder_dir, name, extension);
 
         if !Path::new(&path).exists() {
             if !Path::new(&format!("./uploads/{}", folder_dir)).exists() {
@@ -141,10 +144,10 @@ fn gen_upload_file(field: &Field) -> Result<NamedReturn, Box<dyn std::error::Err
 
             return Ok(NamedReturn {
                 new_path: path,
-                temp_path: format!("./uploads/{}/{}.{}.~tmp", folder_dir, name, ext),
+                temp_path: format!("./uploads/{}/{}.{}.~tmp", folder_dir, name, extension),
                 uri: format!("/{}/{}", folder_dir, name),
-                ffn: format!("{}{}.{}", folder_dir, name, ext),
-                ext: format!("{}", ext),
+                ffn: format!("{}{}.{}", folder_dir, name, extension),
+                ext: format!("{}", extension),
             });
         }
     }
