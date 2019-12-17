@@ -109,15 +109,17 @@ pub async fn upload(
 
         // We rename in case something goes wrong.
         std::fs::rename(&file_names.temp_path, &file_names.new_path)?;
+        let domain = format!(
+            "{}://{}",
+            request.connection_info().scheme(),
+            request.connection_info().host()
+        );
 
         return Ok(HttpResponse::Ok().json(&UploadResp {
-            url: format!(
-                "{}://{}{}.{}",
-                config.https, config.domain, file_names.uri, file_names.ext
-            ),
+            url: format!("{}{}.{}", domain, file_names.uri, file_names.ext),
             delete_url: format!(
-                "{}://{}/d{}.{}?del={}",
-                config.https, config.domain, file_names.uri, file_names.ext, del_key
+                "{}/d{}.{}?del={}",
+                domain, file_names.uri, file_names.ext, del_key
             ),
         }));
     }

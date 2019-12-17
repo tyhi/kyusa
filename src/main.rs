@@ -18,8 +18,8 @@ async fn p404() -> &'static str { "this resource does not exist." }
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
     let config = Config::load().await.unwrap();
-
     let port = config.port.clone();
+
     if !std::path::Path::new("./uploads").exists() {
         std::fs::create_dir_all("./uploads")?;
     }
