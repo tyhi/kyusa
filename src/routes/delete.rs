@@ -2,7 +2,7 @@ use crate::{
     utils::{config::Config, database},
     GLOBAL_DB,
 };
-use actix_web::{error, get, web, HttpResponse, Result};
+use actix_web::{error, get, web, HttpRequest, HttpResponse, Result};
 use serde::Deserialize;
 use std::{fs, path};
 
@@ -20,6 +20,7 @@ pub async fn delete(
     config: web::Data<Config>,
     path: web::Path<FilePath>,
     del: web::Query<DeleteFile>,
+    request: HttpRequest,
 ) -> Result<HttpResponse> {
     let binc = match database::get_entry(&format!("{}{}", path.folder, path.file)) {
         Ok(binc) => binc,
@@ -49,7 +50,10 @@ pub async fn delete(
     if config.cloudflare_details.is_some() == true {
         let url = format!(
             "{}://{}/{}/{}",
-            config.https, config.domain, path.folder, path.file
+            request.connection_info().scheme(),
+            request.connection_info().host(),
+            path.folder,
+            path.file
         );
         match cfp_rs::purge_file(
             &config.cloudflare_details.as_ref().unwrap().cf_zone,

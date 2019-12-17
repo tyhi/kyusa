@@ -5,9 +5,6 @@ use std::{collections::HashMap, fs::File, io, io::Read, path::Path};
 #[serde(rename_all = "PascalCase")]
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Config {
-    pub domain: String,
-    pub domain_root: String,
-    pub https: String,
     pub private: bool,
     pub port: String,
     pub multipart_name: String,
@@ -59,29 +56,18 @@ async fn init_cfg() -> Config {
     println!("Enter port to be used to host web server:");
     let port = get_input();
 
-    // Set domain used
-    println!("Enter domain that will be used (with subdomain if used & no http(s)):");
-    let domain_input = get_input();
-
-    let domain: DomainName = domain_input.trim().parse().unwrap();
-    let domain_root = domain.root().to_string();
-    let domain_full = domain.to_string();
-
-    // Check if will be using https
-    let https: String;
-
-    if parse_yn(
-        "Is your domain setup to use https (eg. reverse proxy; this does not serve ssl)?[y/n]:",
-    ) {
-        https = "https".to_string()
-    } else {
-        https = "http".to_string()
-    }
     let cf_details: Option<CloudflareDetails>;
     if parse_yn(
         "Do you want to setup CloudFlare integration? This will purge cache when you delete a \
          file.[y/n] ",
     ) {
+        // Set domain used
+        println!("Enter domain that will be used:");
+        let domain_input = get_input();
+
+        let domain: DomainName = domain_input.trim().parse().unwrap();
+        let domain_root = domain.root().to_string();
+
         println!("Enter CloudFlare API Key (Permissions needed: Zone.Zone, Zone.Cache Purge):");
         let cf_api = get_input();
         let cf_zone = cfp_rs::get_domain_id(&domain_root, &cf_api)
@@ -114,10 +100,7 @@ async fn init_cfg() -> Config {
 
     // Setup public/private
     return Config {
-        domain: domain_full,
-        domain_root,
         port,
-        https,
         multipart_name: "file".to_owned(),
         private,
         key_details: api_keys,
