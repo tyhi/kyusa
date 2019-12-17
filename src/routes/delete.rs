@@ -47,7 +47,7 @@ pub async fn delete(
         return Err(error::ErrorInternalServerError(err));
     }
 
-    if config.cloudflare_details.is_some() == true {
+    if let Some(cf) = &config.cloudflare_details {
         let url = format!(
             "{}://{}/{}/{}",
             request.connection_info().scheme(),
@@ -55,13 +55,7 @@ pub async fn delete(
             path.folder,
             path.file
         );
-        match cfp_rs::purge_file(
-            &config.cloudflare_details.as_ref().unwrap().cf_zone,
-            &url,
-            &config.cloudflare_details.as_ref().unwrap().cf_api,
-        )
-        .await
-        {
+        match cfp_rs::purge_file(cf.cf_zone.as_str(), &url, &cf.cf_api.as_str()).await {
             Ok(status) => {
                 if status != 200 {
                     return Err(error::ErrorInternalServerError(
@@ -73,6 +67,8 @@ pub async fn delete(
             Err(err) => return Err(error::ErrorInternalServerError(err)),
         }
     }
+
+    if config.cloudflare_details.is_some() == true {}
     Ok(HttpResponse::Ok().body("file deleted"))
 }
 
