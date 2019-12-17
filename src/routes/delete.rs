@@ -68,7 +68,6 @@ pub async fn delete(
         }
     }
 
-    if config.cloudflare_details.is_some() == true {}
     Ok(HttpResponse::Ok().body("file deleted"))
 }
 

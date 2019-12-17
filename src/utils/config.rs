@@ -1,4 +1,3 @@
-use addr::DomainName;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs::File, io, io::Read, path::Path};
 
@@ -62,15 +61,12 @@ async fn init_cfg() -> Config {
          file.[y/n] ",
     ) {
         // Set domain used
-        println!("Enter domain that will be used:");
+        println!("Enter domain as it appears on CloudFlare (domain root):");
         let domain_input = get_input();
-
-        let domain: DomainName = domain_input.trim().parse().unwrap();
-        let domain_root = domain.root().to_string();
 
         println!("Enter CloudFlare API Key (Permissions needed: Zone.Zone, Zone.Cache Purge):");
         let cf_api = get_input();
-        let cf_zone = cfp_rs::get_domain_id(&domain_root, &cf_api)
+        let cf_zone = cfp_rs::get_domain_id(&domain_input, &cf_api)
             .await
             .expect("error getting domain id from cloudflare");
         cf_details = Some(CloudflareDetails { cf_zone, cf_api });
