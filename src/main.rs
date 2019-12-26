@@ -40,6 +40,6 @@ async fn main() -> std::io::Result<()> {
             .default_service(web::resource("").route(web::get().to(p404)))
     })
     .bind(format!("0.0.0.0:{}", port))?
-    .start()
+    .run()
     .await
 }
