@@ -8,7 +8,7 @@ pub struct FilePath {
     pub file: String,
 }
 
-#[get("/{folder}/{file}")]
+#[get("/u/{folder}/{file}")]
 pub async fn serve(info: web::Path<FilePath>) -> Result<NamedFile> {
     Ok(NamedFile::open(format!(
         "./uploads/{}/{}",

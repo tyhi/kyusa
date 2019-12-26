@@ -116,9 +116,9 @@ pub async fn upload(
         );
 
         return Ok(HttpResponse::Ok().json(&UploadResp {
-            url: format!("{}{}.{}", domain, file_names.uri, file_names.ext),
+            url: format!("{}/u{}.{}", domain, file_names.uri, file_names.ext),
             delete_url: format!(
-                "{}/d{}.{}?del={}",
+                "{}/u/d{}.{}?del={}",
                 domain, file_names.uri, file_names.ext, del_key
             ),
         }));
