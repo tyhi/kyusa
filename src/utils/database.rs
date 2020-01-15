@@ -74,13 +74,14 @@ pub async fn insert_file(
 
     let rec = sqlx::query!(
         r#"
-        INSERT INTO files (owner, path, deletekey)
-        VALUES ($1, $2, $3)
+        INSERT INTO files (owner, path, deletekey, filesize)
+        VALUES ($1, $2, $3, $4)
         RETURNING id
     "#,
         file.owner,
         file.path,
-        file.deletekey
+        file.deletekey,
+        file.filesize
     )
     .fetch_one(&mut tx)
     .await
@@ -131,20 +132,6 @@ pub async fn check_api(
     return if resp.count == 0 { Ok(false) } else { Ok(true) };
 }
 
-pub async fn file_count(p: Data<PgPool>) -> Result<i64, Box<dyn std::error::Error>> {
-    let mut tx = p.begin().await?;
-    let resp = sqlx::query!(
-        r#"
-            SELECT COUNT(*)
-            from files
-        "#
-    )
-    .fetch_one(&mut tx)
-    .await?;
-
-    Ok(resp.count)
-}
-
 pub async fn delete_file(
     p: Data<PgPool>,
     filepath: String,
@@ -163,4 +150,41 @@ pub async fn delete_file(
     tx.commit().await?;
 
     Ok(id.id)
+}
+
+pub async fn get_metrics(p: Data<PgPool>) -> Result<models::Metrics, Box<dyn std::error::Error>> {
+    let mut tx = p.begin().await?;
+    let metrics: models::Metrics = sqlx::query_as!(
+        models::Metrics,
+        r#"
+            SELECT
+            (SELECT count(*)::bigint from files) as files,
+            (SELECT count(*)::bigint from users) as users,
+            (SELECT sum(downloads*filesize)::bigint from files ) as served,
+            (SELECT sum(filesize)::bigint from files) as stored
+        "#
+    )
+    .fetch_one(&mut tx)
+    .await?;
+
+    Ok(metrics)
+}
+
+pub async fn inc_file(p: Data<PgPool>, filepath: String) -> Result<(), Box<dyn std::error::Error>> {
+    let mut tx = p.begin().await?;
+
+    let _ = sqlx::query!(
+        r#"
+        UPDATE files
+        SET downloads = downloads + 1
+        WHERE path = $1
+        RETURNING id
+    "#,
+        filepath
+    )
+    .fetch_one(&mut tx)
+    .await?;
+
+    tx.commit().await?;
+    Ok(())
 }

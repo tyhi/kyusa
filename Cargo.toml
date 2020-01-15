@@ -21,6 +21,7 @@ chrono = {version = "0.4.10", features = ["serde"]}
 futures = "0.3.1"
 sqlx = { version = "0.2", default-features = false, features = [ "runtime-tokio", "macros", "uuid", "postgres", "chrono" ] }
 uuid = {version = "0.8.1", features = ["serde"]}
+dotenv = "0.15.0"
 
 [build-dependencies]
 built = "0.3.2"

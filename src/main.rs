@@ -1,5 +1,7 @@
 use actix_web::web;
+use dotenv::dotenv;
 use sqlx::PgPool;
+use std::env;
 use utils::config::Config;
 
 mod routes;
@@ -14,7 +16,9 @@ async fn p404() -> &'static str { "this resource does not exist." }
 
 #[actix_rt::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let pool = PgPool::new("postgres://postgres:8j4y7xAA@localhost/kyous").await?;
+    dotenv().ok();
+
+    let pool = PgPool::new(&env::var("DATABASE_URL")?).await?;
 
     let config = Config::load().await.unwrap();
     let port = config.port.clone();

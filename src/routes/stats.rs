@@ -6,19 +6,25 @@ use sqlx::PgPool;
 #[derive(Serialize)]
 struct Stats {
     files: i64,
+    users: i64,
+    storesize: i64,
+    served: i64,
     version: String,
     rustc: String,
 }
 
 #[get("/stats")]
 pub async fn stats(p: Data<PgPool>) -> Result<HttpResponse> {
-    let files = match database::file_count(p).await {
+    let metrics = match database::get_metrics(p).await {
         Ok(x) => x,
         Err(e) => return Err(error::ErrorInternalServerError(e)),
     };
 
     Ok(HttpResponse::Ok().json(Stats {
-        files,
+        files: metrics.files,
+        users: metrics.users,
+        storesize: metrics.stored,
+        served: metrics.served,
         version: format!(
             "{} {}",
             built_info::PKG_VERSION,
