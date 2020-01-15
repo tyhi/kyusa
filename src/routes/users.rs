@@ -1,4 +1,4 @@
-use actix_web::{get, post, web, Scope};
+use actix_web::{get, post};
 
 #[post("/user/register")]
 pub async fn register() -> &'static str { "not impl" }

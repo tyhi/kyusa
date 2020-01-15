@@ -1,9 +1,7 @@
-use crate::{
-    utils::{config::Config, database},
-    GLOBAL_DB,
-};
+use crate::utils::{config::Config, database};
 use actix_web::{error, get, web, HttpRequest, HttpResponse, Result};
 use serde::Deserialize;
+use sqlx::PgPool;
 use std::{fs, path};
 
 #[derive(Deserialize)]
@@ -20,28 +18,21 @@ pub async fn delete(
     config: web::Data<Config>,
     path: web::Path<FilePath>,
     del: web::Query<DeleteFile>,
+    p: web::Data<PgPool>,
     request: HttpRequest,
 ) -> Result<HttpResponse> {
-    let binc = match database::get_entry(&format!("{}{}", path.folder, path.file)) {
-        Ok(binc) => binc,
-        Err(err) => return Err(error::ErrorInternalServerError(err)),
-    };
+    let file = database::get_file(p, format!("/{}/{}", path.folder, path.file))
+        .await
+        .unwrap();
 
-    let data: database::FileMetadata = match database::de_ser(&binc) {
-        Ok(x) => x,
-        Err(err) => return Err(error::ErrorInternalServerError(err)),
-    };
-
-    if del.del != data.del_key {
-        return Err(error::ErrorUnauthorized("invalid delete key"));
+    if file.deletekey != del.del {
+        return Err(error::ErrorUnauthorized("not a valid delete key"));
     }
 
-    match GLOBAL_DB.remove(format!("{}{}", path.folder, path.file).into_bytes()) {
-        Ok(x) => x,
-        Err(err) => return Err(error::ErrorInternalServerError(err)),
-    };
+    // remove from db
 
-    let file_path = path::Path::new(&data.file_path);
+    let fp = format!("./uploads{}", file.path);
+    let file_path = path::Path::new(&fp);
 
     if let Err(err) = del_file(file_path) {
         return Err(error::ErrorInternalServerError(err));
@@ -49,11 +40,10 @@ pub async fn delete(
 
     if let Some(cf) = &config.cloudflare_details {
         let url = format!(
-            "{}://{}/{}/{}",
+            "{}://{}{}",
             request.connection_info().scheme(),
             request.connection_info().host(),
-            path.folder,
-            path.file
+            file.path
         );
         match cfp_rs::purge_file(cf.cf_zone.as_str(), &url, &cf.cf_api.as_str()).await {
             Ok(status) => {

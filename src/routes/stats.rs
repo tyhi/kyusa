@@ -1,18 +1,24 @@
-use crate::{built_info, GLOBAL_DB};
-use actix_web::{get, HttpResponse, Result};
+use crate::{built_info, utils::database};
+use actix_web::{error, get, web::Data, HttpResponse, Result};
 use serde::Serialize;
+use sqlx::PgPool;
 
 #[derive(Serialize)]
 struct Stats {
-    files: usize,
+    files: i64,
     version: String,
     rustc: String,
 }
 
 #[get("/stats")]
-pub async fn stats() -> Result<HttpResponse> {
+pub async fn stats(p: Data<PgPool>) -> Result<HttpResponse> {
+    let files = match database::file_count(p).await {
+        Ok(x) => x,
+        Err(e) => return Err(error::ErrorInternalServerError(e)),
+    };
+
     Ok(HttpResponse::Ok().json(Stats {
-        files: GLOBAL_DB.len(),
+        files,
         version: format!(
             "{} {}",
             built_info::PKG_VERSION,

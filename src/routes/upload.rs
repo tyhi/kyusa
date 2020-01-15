@@ -1,12 +1,12 @@
 use crate::{
     routes::delete::del_file,
-    utils::{config::Config, database},
-    GLOBAL_DB,
+    utils::{config::Config, database, models},
 };
 use actix_multipart::{Field, Multipart};
 use actix_web::{error, http::HeaderMap, post, web::Data, HttpRequest, HttpResponse, Result};
 use futures::StreamExt;
 use serde::Serialize;
+use sqlx::PgPool;
 use std::{fs, io::Write, path::Path};
 
 #[derive(Serialize)]
@@ -19,7 +19,6 @@ struct NamedReturn {
     new_path: String,
     temp_path: String,
     uri: String,
-    ffn: String,
     ext: String,
 }
 
@@ -30,12 +29,12 @@ pub async fn upload(
     mut multipart: Multipart,
     config: Data<Config>,
     request: HttpRequest,
+    p: Data<PgPool>,
 ) -> Result<HttpResponse, error::Error> {
-    if config.private {
-        if let Err(why) = check_header(request.headers(), &config) {
-            return Err(error::ErrorUnauthorized(why));
-        }
-    }
+    let user = match check_header(request.headers(), p.clone()).await {
+        Ok(x) => x,
+        Err(e) => return Err(error::ErrorUnauthorized(e)),
+    };
 
     // Handle multipart upload(s)
     while let Some(item) = multipart.next().await {
@@ -95,18 +94,6 @@ pub async fn upload(
         // Generates the delete key.
         let del_key = nanoid::simple();
 
-        // TODO: Combine/refractor these two functions.
-        // Creates the Vec<u8> to be used in inserting into the sled db.
-        let ins = match database::generate_insert_binary(&file_names.new_path, &del_key) {
-            Ok(x) => x,
-            Err(err) => return Err(error::ErrorInternalServerError(err)),
-        };
-
-        // Insert binary into database.
-        if let Err(err) = GLOBAL_DB.insert(&file_names.ffn.into_bytes(), ins) {
-            return Err(error::ErrorInternalServerError(err));
-        }
-
         // We rename in case something goes wrong.
         std::fs::rename(&file_names.temp_path, &file_names.new_path)?;
         let domain = format!(
@@ -114,6 +101,20 @@ pub async fn upload(
             request.connection_info().scheme(),
             request.connection_info().host()
         );
+
+        let e = database::insert_file(
+            p,
+            models::InsertFile {
+                owner: user.username,
+                uploaded: chrono::Utc::now().naive_utc(),
+                path: format!("{}.{}", file_names.uri, file_names.ext),
+                deletekey: del_key.clone(),
+            },
+        )
+        .await
+        .unwrap();
+
+        println!("{:?}", e);
 
         return Ok(HttpResponse::Ok().json(&UploadResp {
             url: format!("{}/u{}.{}", domain, file_names.uri, file_names.ext),
@@ -164,7 +165,6 @@ fn gen_upload_file(field: &Field) -> Result<NamedReturn, Box<dyn std::error::Err
                 new_path: path,
                 temp_path: format!("./uploads/{}/{}.{}.~tmp", folder_dir, name, extension),
                 uri: format!("/{}/{}", folder_dir, name),
-                ffn: format!("{}{}.{}", folder_dir, name, extension),
                 ext: format!("{}", extension),
             });
         }
@@ -186,21 +186,19 @@ fn check_name(field: &Field, name: &str) -> Result<bool, Box<dyn std::error::Err
 }
 
 // Checks headers to see if key is valid.
-fn check_header(
+async fn check_header(
     header: &HeaderMap,
-    config: &Data<Config>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    if config
-        .key_details
-        .get(
-            header
-                .get("apikey")
-                .ok_or("apikey header missing")?
-                .to_str()?,
-        )
-        .is_none()
-    {
-        return Err("invalid api key".into());
+    p: Data<PgPool>,
+) -> Result<models::User, Box<dyn std::error::Error>> {
+    let apikey = header
+        .get("apikey")
+        .ok_or("apikey header missing")?
+        .to_str()?
+        .to_string();
+
+    if database::check_api(p.clone(), apikey.clone()).await? {
+        return Ok(database::get_user(p, apikey).await?);
     }
-    Ok(())
+
+    Err("invalid api_key".into())
 }
