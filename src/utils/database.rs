@@ -144,3 +144,23 @@ pub async fn file_count(p: Data<PgPool>) -> Result<i64, Box<dyn std::error::Erro
 
     Ok(resp.count)
 }
+
+pub async fn delete_file(
+    p: Data<PgPool>,
+    filepath: String,
+) -> Result<Uuid, Box<dyn std::error::Error>> {
+    let mut tx = p.begin().await?;
+    let id = sqlx::query!(
+        r#"
+            DELETE FROM files
+            WHERE path = $1
+            RETURNING id
+        "#,
+        filepath
+    )
+    .fetch_one(&mut tx)
+    .await?;
+    tx.commit().await?;
+
+    Ok(id.id)
+}

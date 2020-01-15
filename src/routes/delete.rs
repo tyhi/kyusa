@@ -21,7 +21,7 @@ pub async fn delete(
     p: web::Data<PgPool>,
     request: HttpRequest,
 ) -> Result<HttpResponse> {
-    let file = database::get_file(p, format!("/{}/{}", path.folder, path.file))
+    let file = database::get_file(p.clone(), format!("/{}/{}", path.folder, path.file))
         .await
         .unwrap();
 
@@ -36,6 +36,10 @@ pub async fn delete(
 
     if let Err(err) = del_file(file_path) {
         return Err(error::ErrorInternalServerError(err));
+    }
+
+    if let Err(why) = database::delete_file(p, format!("/{}/{}", path.folder, path.file)).await {
+        return Err(error::ErrorInternalServerError(why));
     }
 
     if let Some(cf) = &config.cloudflare_details {

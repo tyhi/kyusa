@@ -102,7 +102,7 @@ pub async fn upload(
             request.connection_info().host()
         );
 
-        let e = database::insert_file(
+        if let Err(why) = database::insert_file(
             p,
             models::InsertFile {
                 owner: user.username,
@@ -112,14 +112,14 @@ pub async fn upload(
             },
         )
         .await
-        .unwrap();
-
-        println!("{:?}", e);
+        {
+            return Err(error::ErrorInternalServerError(why));
+        }
 
         return Ok(HttpResponse::Ok().json(&UploadResp {
             url: format!("{}/u{}.{}", domain, file_names.uri, file_names.ext),
             delete_url: format!(
-                "{}/u/d{}.{}?del={}",
+                "{}/d{}.{}?del={}",
                 domain, file_names.uri, file_names.ext, del_key
             ),
         }));
