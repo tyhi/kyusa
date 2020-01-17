@@ -109,7 +109,7 @@ pub async fn upload(
                 uploaded: chrono::Utc::now().naive_utc(),
                 path: format!("{}.{}", file_names.uri, file_names.ext),
                 deletekey: del_key.clone(),
-                filesize: fs as i64,
+                filesize: (fs / 1000000) as f64,
                 downloads: 0,
             },
         )

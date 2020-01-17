@@ -25,7 +25,7 @@ pub struct File {
     pub uploaded: NaiveDateTime,
     pub path: String,
     pub deletekey: String,
-    pub filesize: i64,
+    pub filesize: f64,
     pub downloads: i64,
 }
 
@@ -34,13 +34,13 @@ pub struct InsertFile {
     pub uploaded: NaiveDateTime,
     pub path: String,
     pub deletekey: String,
-    pub filesize: i64,
+    pub filesize: f64,
     pub downloads: i64,
 }
 
 pub struct Metrics {
     pub files: i64,
     pub users: i64,
-    pub served: i64,
-    pub stored: i64,
+    pub served: f64,
+    pub stored: f64,
 }

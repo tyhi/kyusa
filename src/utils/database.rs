@@ -160,8 +160,8 @@ pub async fn get_metrics(p: Data<PgPool>) -> Result<models::Metrics, Box<dyn std
             SELECT
             (SELECT count(*)::bigint from files) as files,
             (SELECT count(*)::bigint from users) as users,
-            (SELECT sum(downloads*filesize)::bigint from files ) as served,
-            (SELECT sum(filesize)::bigint from files) as stored
+            (SELECT sum(downloads*filesize)::float8 from files ) as served,
+            (SELECT sum(filesize)::float8 from files) as stored
         "#
     )
     .fetch_one(&mut tx)

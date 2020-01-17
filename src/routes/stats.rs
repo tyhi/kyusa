@@ -7,8 +7,8 @@ use sqlx::PgPool;
 struct Stats {
     files: i64,
     users: i64,
-    storesize: i64,
-    served: i64,
+    storesize: String,
+    served: String,
     version: String,
     rustc: String,
 }
@@ -23,8 +23,8 @@ pub async fn stats(p: Data<PgPool>) -> Result<HttpResponse> {
     Ok(HttpResponse::Ok().json(Stats {
         files: metrics.files,
         users: metrics.users,
-        storesize: metrics.stored,
-        served: metrics.served,
+        storesize: format!("{:2} MB", metrics.stored),
+        served: format!("{:2} MB", metrics.stored),
         version: format!(
             "{} {}",
             built_info::PKG_VERSION,
