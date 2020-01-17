@@ -74,10 +74,10 @@ pub async fn insert_file(
 
     let rec = sqlx::query!(
         r#"
-        INSERT INTO files (owner, path, deletekey, filesize)
-        VALUES ($1, $2, $3, $4)
-        RETURNING id
-    "#,
+            INSERT INTO files (owner, path, deletekey, filesize)
+            VALUES ($1, $2, $3, $4)
+            RETURNING id
+        "#,
         file.owner,
         file.path,
         file.deletekey,
@@ -158,10 +158,10 @@ pub async fn get_metrics(p: Data<PgPool>) -> Result<models::Metrics, Box<dyn std
         models::Metrics,
         r#"
             SELECT
-            (SELECT count(*)::bigint from files) as files,
-            (SELECT count(*)::bigint from users) as users,
-            (SELECT sum(downloads*filesize)::float8 from files ) as served,
-            (SELECT sum(filesize)::float8 from files) as stored
+            (SELECT coalesce(count(*), 0)::bigint from files as bigint) as files,
+            (SELECT coalesce(count(*), 0)::bigint from users) as users,
+            (SELECT coalesce(sum(downloads*filesize), 0)::float8 as bigint from files) as served,
+            (SELECT coalesce(sum(filesize), 0)::float8 from files as bigint) as stored
         "#
     )
     .fetch_one(&mut tx)
@@ -175,11 +175,11 @@ pub async fn inc_file(p: Data<PgPool>, filepath: String) -> Result<(), Box<dyn s
 
     let _ = sqlx::query!(
         r#"
-        UPDATE files
-        SET downloads = downloads + 1
-        WHERE path = $1
-        RETURNING id
-    "#,
+            UPDATE files
+            SET downloads = downloads + 1
+            WHERE path = $1
+            RETURNING id
+        "#,
         filepath
     )
     .fetch_one(&mut tx)
