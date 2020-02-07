@@ -29,18 +29,14 @@ pub async fn delete(
         return Err(error::ErrorUnauthorized("not a valid delete key"));
     }
 
-    // remove from db
-
     let fp = format!("./uploads{}", file.path);
     let file_path = path::Path::new(&fp);
 
-    if let Err(err) = del_file(file_path) {
-        return Err(error::ErrorInternalServerError(err));
-    }
+    del_file(file_path).map_err(error::ErrorInternalServerError)?;
 
-    if let Err(why) = database::delete_file(p, format!("/{}/{}", path.folder, path.file)).await {
-        return Err(error::ErrorInternalServerError(why));
-    }
+    database::delete_file(p, format!("/{}/{}", path.folder, path.file))
+        .await
+        .map_err(error::ErrorInternalServerError)?;
 
     if let Some(cf) = &config.cloudflare_details {
         let url = format!(

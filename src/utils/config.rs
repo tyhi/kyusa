@@ -1,13 +1,11 @@
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fs::File, io, io::Read, path::Path};
+use std::{fs::File, io, io::Read, path::Path};
 
 #[serde(rename_all = "PascalCase")]
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Config {
-    pub private: bool,
     pub port: String,
     pub multipart_name: String,
-    pub key_details: HashMap<String, KeyDetails>,
     pub cloudflare_details: Option<CloudflareDetails>,
 }
 #[serde(rename_all = "PascalCase")]
@@ -15,13 +13,6 @@ pub struct Config {
 pub struct CloudflareDetails {
     pub cf_zone: String,
     pub cf_api: String,
-}
-
-#[serde(rename_all = "PascalCase")]
-#[derive(Serialize, Deserialize, Clone)]
-pub struct KeyDetails {
-    pub name: String,
-    pub admin: bool,
 }
 
 impl Config {
@@ -74,34 +65,12 @@ async fn init_cfg() -> Config {
         cf_details = None;
     }
 
-    let mut api_keys: HashMap<String, KeyDetails> = HashMap::new();
-    let private: bool;
-    if parse_yn("Do you want to make this private? (e.g. require api keys?") {
-        let api_key = nanoid::generate(24);
-        println!(
-            "This will be the admin api key it will only be shown once:\n{}",
-            api_key
-        );
-        private = true;
-        api_keys.insert(
-            api_key,
-            KeyDetails {
-                name: "admin".to_string(),
-                admin: true,
-            },
-        );
-    } else {
-        private = false;
-    }
-
     // Setup public/private
-    return Config {
+    Config {
         port,
         multipart_name: "file".to_owned(),
-        private,
-        key_details: api_keys,
         cloudflare_details: cf_details,
-    };
+    }
 }
 
 fn get_input() -> String {

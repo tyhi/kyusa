@@ -22,7 +22,7 @@ struct NamedReturn {
     ext: String,
 }
 
-const RANDOM_FILE_EXT: &'static [&str] = &["png", "jpeg", "jpg", "webm", "gif", "avi", "mp4"];
+const RANDOM_FILE_EXT: &[&str] = &["png", "jpeg", "jpg", "webm", "gif", "avi", "mp4"];
 
 #[post("/u")]
 pub async fn upload(
@@ -30,11 +30,10 @@ pub async fn upload(
     config: Data<Config>,
     request: HttpRequest,
     p: Data<PgPool>,
-) -> Result<HttpResponse, error::Error> {
-    let user = match check_header(request.headers(), p.clone()).await {
-        Ok(x) => x,
-        Err(e) => return Err(error::ErrorUnauthorized(e)),
-    };
+) -> Result<HttpResponse> {
+    let user = check_header(request.headers(), p.clone())
+        .await
+        .map_err(error::ErrorUnauthorized)?;
 
     // Handle multipart upload(s)
     while let Some(item) = multipart.next().await {
@@ -50,16 +49,9 @@ pub async fn upload(
             Err(e) => return Err(error::ErrorInternalServerError(e)),
         };
 
-        // Create the file_names required.
-        let file_names = match gen_upload_file(&field) {
-            Ok(file_names) => file_names,
-            Err(err) => {
-                return Err(error::ErrorInternalServerError(format!(
-                    "error generating filename: {}",
-                    err
-                )))
-            },
-        };
+        let file_names = gen_upload_file(&field).map_err(|err| {
+            error::ErrorInternalServerError(format!("error generating filename: {}", err))
+        })?;
 
         // Create the temp. file to work with wile we iter over all the chunks.
         let mut f = std::fs::File::create(&file_names.temp_path)?;
@@ -102,21 +94,19 @@ pub async fn upload(
             request.connection_info().host()
         );
 
-        if let Err(why) = database::insert_file(
+        database::insert_file(
             p,
             models::InsertFile {
                 owner: user.username,
                 uploaded: chrono::Utc::now().naive_utc(),
                 path: format!("{}.{}", file_names.uri, file_names.ext),
                 deletekey: del_key.clone(),
-                filesize: (fs / 1000000) as f64,
+                filesize: (fs / 1_000_000) as f64,
                 downloads: 0,
             },
         )
         .await
-        {
-            return Err(error::ErrorInternalServerError(why));
-        }
+        .map_err(error::ErrorInternalServerError)?;
 
         return Ok(HttpResponse::Ok().json(&UploadResp {
             url: format!("{}/u{}.{}", domain, file_names.uri, file_names.ext),
@@ -184,7 +174,7 @@ fn check_name(field: &Field, name: &str) -> Result<bool, Box<dyn std::error::Err
     {
         return Ok(false);
     }
-    return Ok(true);
+    Ok(true)
 }
 
 // Checks headers to see if key is valid.

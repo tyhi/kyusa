@@ -1,17 +1,8 @@
 use super::models;
 use crate::utils::models::User;
 use actix_web::web::Data;
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use uuid::Uuid;
-
-#[derive(Serialize, Deserialize)]
-pub struct FileMetadata<'a> {
-    pub file_path: &'a str,
-    pub del_key: &'a str,
-    pub time_date: DateTime<Utc>,
-}
 
 // new database stuff below
 pub async fn get_user(
@@ -129,7 +120,11 @@ pub async fn check_api(
     )
     .fetch_one(&mut tx)
     .await?;
-    return if resp.count == 0 { Ok(false) } else { Ok(true) };
+    if resp.count == 0 {
+        Ok(false)
+    } else {
+        Ok(true)
+    }
 }
 
 pub async fn delete_file(

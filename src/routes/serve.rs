@@ -12,9 +12,9 @@ pub struct FilePath {
 
 #[get("/u/{folder}/{file}")]
 pub async fn serve(info: web::Path<FilePath>, p: web::Data<PgPool>) -> Result<NamedFile> {
-    if let Err(why) = database::inc_file(p, format!("/{}/{}", info.folder, info.file)).await {
-        return Err(error::ErrorInternalServerError(why));
-    };
+    database::inc_file(p, format!("/{}/{}", info.folder, info.file))
+        .await
+        .map_err(error::ErrorInternalServerError)?;
 
     Ok(NamedFile::open(format!(
         "./uploads/{}/{}",

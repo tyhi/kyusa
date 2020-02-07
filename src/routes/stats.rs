@@ -15,10 +15,9 @@ struct Stats {
 
 #[get("/stats")]
 pub async fn stats(p: Data<PgPool>) -> Result<HttpResponse> {
-    let metrics = match database::get_metrics(p).await {
-        Ok(x) => x,
-        Err(e) => return Err(error::ErrorInternalServerError(e)),
-    };
+    let metrics = database::get_metrics(p)
+        .await
+        .map_err(error::ErrorInternalServerError)?;
 
     Ok(HttpResponse::Ok().json(Stats {
         files: metrics.files,
