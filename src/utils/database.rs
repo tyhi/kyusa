@@ -63,8 +63,6 @@ pub async fn insert_file(
 ) -> Result<Uuid, Box<dyn std::error::Error>> {
     let mut tx = p.begin().await?;
 
-    println!("{:?}", file.filesize);
-
     let rec = sqlx::query!(
         r#"
             INSERT INTO files (owner, path, deletekey, filesize)
