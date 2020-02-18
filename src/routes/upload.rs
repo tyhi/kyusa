@@ -25,7 +25,7 @@ struct NamedReturn {
 
 const RANDOM_FILE_EXT: &[&str] = &["png", "jpeg", "jpg", "webm", "gif", "avi", "mp4"];
 
-#[post("/")]
+#[post("/u")]
 pub async fn upload(
     mut multipart: Multipart,
     config: Data<Settings>,
@@ -102,7 +102,7 @@ pub async fn upload(
                 uploaded: chrono::Utc::now().naive_utc(),
                 path: format!("{}.{}", file_names.uri, file_names.ext),
                 deletekey: del_key.clone(),
-                filesize: (fs / 1_000_000) as f64,
+                filesize: (fs as f64 / 1_000_000.0),
                 downloads: 0,
             },
         )
@@ -141,11 +141,11 @@ fn gen_upload_file(field: &Field) -> Result<NamedReturn, Box<dyn std::error::Err
         // Cheaking to see if our file needs to have random name.
         let name = match RANDOM_FILE_EXT.iter().any(|x| x == &extension) {
             false => file_name.to_owned(),
-            true => nanoid::nanoid!(6, nanoid::alphabet::SAFE),
+            true => nanoid::nanoid!(6, &nanoid::alphabet::SAFE),
         };
 
         // Creating our random folder name.
-        let folder_dir = nanoid::nanoid!(3, nanoid::alphabet::SAFE);
+        let folder_dir = nanoid::nanoid!(3, &nanoid::alphabet::SAFE);
 
         let path = format!("./uploads/{}/{}.{}", folder_dir, name, extension);
 

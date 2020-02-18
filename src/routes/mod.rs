@@ -16,9 +16,6 @@ static MSG: &[u8] = &[
 #[get("/k")]
 pub async fn k() -> Result<&'static str> { Ok(from_utf8(MSG)?) }
 
-#[get("/")]
-pub async fn index() -> &'static str { "hi welcome to kyusa" }
-
 pub fn routes() -> Scope {
     web::scope("/")
         .service(delete::delete)
@@ -28,6 +25,5 @@ pub fn routes() -> Scope {
         .service(users::del_user)
         .service(users::get_user_stats)
         .service(k)
-        .service(index)
         .service(serve::serve)
 }

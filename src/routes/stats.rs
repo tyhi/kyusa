@@ -22,8 +22,8 @@ pub async fn stats(p: Data<PgPool>) -> Result<HttpResponse> {
     Ok(HttpResponse::Ok().json(Stats {
         files: metrics.files,
         users: metrics.users,
-        storesize: format!("{:2} MB", metrics.stored),
-        served: format!("{:2} MB", metrics.served),
+        storesize: format!("{:.2} MB", metrics.stored),
+        served: format!("{:.2} MB", metrics.served),
         version: format!(
             "{} {}",
             built_info::PKG_VERSION,
