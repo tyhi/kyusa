@@ -1,4 +1,7 @@
-use crate::utils::{config::Config, database};
+use crate::{
+    utils::{cf, database},
+    Settings,
+};
 use actix_web::{error, get, web, HttpRequest, HttpResponse, Result};
 use serde::Deserialize;
 use sqlx::PgPool;
@@ -15,7 +18,7 @@ pub struct DeleteFile {
 }
 #[get("/d/{folder}/{file}")]
 pub async fn delete(
-    config: web::Data<Config>,
+    config: web::Data<Settings>,
     path: web::Path<FilePath>,
     del: web::Query<DeleteFile>,
     p: web::Data<PgPool>,
@@ -45,7 +48,7 @@ pub async fn delete(
             request.connection_info().host(),
             file.path
         );
-        match cfp_rs::purge_file(cf.cf_zone.as_str(), &url, &cf.cf_api.as_str()).await {
+        match cf::purge(&cf.cloudflare_api, &cf.cloudflare_zone, &url).await {
             Ok(status) => {
                 if status != 200 {
                     return Err(error::ErrorInternalServerError(

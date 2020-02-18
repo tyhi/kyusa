@@ -1,6 +1,7 @@
 use crate::{
     routes::delete::del_file,
-    utils::{config::Config, database, models},
+    utils::{database, models},
+    Settings,
 };
 use actix_multipart::{Field, Multipart};
 use actix_web::{error, http::HeaderMap, post, web::Data, HttpRequest, HttpResponse, Result};
@@ -24,10 +25,10 @@ struct NamedReturn {
 
 const RANDOM_FILE_EXT: &[&str] = &["png", "jpeg", "jpg", "webm", "gif", "avi", "mp4"];
 
-#[post("/u")]
+#[post("/")]
 pub async fn upload(
     mut multipart: Multipart,
-    config: Data<Config>,
+    config: Data<Settings>,
     request: HttpRequest,
     p: Data<PgPool>,
 ) -> Result<HttpResponse> {
@@ -84,7 +85,7 @@ pub async fn upload(
         }
 
         // Generates the delete key.
-        let del_key = nanoid::simple();
+        let del_key = nanoid::nanoid!(12, &nanoid::alphabet::SAFE);
 
         // We rename in case something goes wrong.
         std::fs::rename(&file_names.temp_path, &file_names.new_path)?;
@@ -140,11 +141,11 @@ fn gen_upload_file(field: &Field) -> Result<NamedReturn, Box<dyn std::error::Err
         // Cheaking to see if our file needs to have random name.
         let name = match RANDOM_FILE_EXT.iter().any(|x| x == &extension) {
             false => file_name.to_owned(),
-            true => nanoid::generate(6),
+            true => nanoid::nanoid!(6, nanoid::alphabet::SAFE),
         };
 
         // Creating our random folder name.
-        let folder_dir = nanoid::generate(3);
+        let folder_dir = nanoid::nanoid!(3, nanoid::alphabet::SAFE);
 
         let path = format!("./uploads/{}/{}.{}", folder_dir, name, extension);
 
