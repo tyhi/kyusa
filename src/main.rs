@@ -35,8 +35,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     if env::var("KYUSA_CLOUDFLARE")? == "true" {
         cloudflare = Some(Cloudflare {
-            cloudflare_zone: env::var("")?,
-            cloudflare_api: env::var("")?,
+            cloudflare_zone: env::var("CLOUDFLARE_ZONE")?,
+            cloudflare_api: env::var("CLOUDFLARE_API")?,
         })
     } else {
         cloudflare = None;
