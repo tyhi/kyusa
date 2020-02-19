@@ -11,13 +11,13 @@ pub mod built_info {
     include!(concat!(env!("OUT_DIR"), "/built.rs"));
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Settings {
     pub multipart_name: String,
     pub cloudflare_details: Option<Cloudflare>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Cloudflare {
     pub cloudflare_api: String,
     pub cloudflare_zone: String,
@@ -54,13 +54,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if !std::path::Path::new("./tmp").exists() {
         std::fs::create_dir_all("./tmp")?;
     }
-    let (sc, pc) = (settings.clone(), pool.clone());
-
-    std::thread::spawn(move || {
-        std::thread::sleep(std::time::Duration::from_secs(5));
-        println!("{:?}", sc);
-        println!("{:?}", pc.size());
-    });
 
     actix_web::HttpServer::new(move || {
         actix_web::App::new()
