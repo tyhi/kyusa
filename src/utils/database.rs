@@ -75,8 +75,7 @@ pub async fn insert_file(
         file.filesize
     )
     .fetch_one(&mut tx)
-    .await
-    .unwrap();
+    .await?;
 
     tx.commit().await?;
 

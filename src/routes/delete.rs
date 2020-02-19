@@ -26,7 +26,7 @@ pub async fn delete(
 ) -> Result<HttpResponse> {
     let file = database::get_file(p.clone(), format!("/{}/{}", path.folder, path.file))
         .await
-        .unwrap();
+        .map_err(error::ErrorInternalServerError)?;
 
     if file.deletekey != del.del {
         return Err(error::ErrorUnauthorized("not a valid delete key"));

@@ -127,14 +127,13 @@ fn gen_upload_file(field: &Field) -> Result<NamedReturn, Box<dyn std::error::Err
 
     let file_name = path
         .file_stem()
-        .ok_or("missing filename")?
-        .to_str()
-        .ok_or("error converting to str")?;
+        .and_then(|s| s.to_str())
+        .ok_or("no file_name")?;
+
     let extension = path
         .extension()
-        .ok_or("unable to get ext")?
-        .to_str()
-        .ok_or("unable to convert to str")?;
+        .and_then(|s| s.to_str())
+        .ok_or("no extension")?;
 
     // This loop makes sure that we don't have collision in file names.
     loop {
