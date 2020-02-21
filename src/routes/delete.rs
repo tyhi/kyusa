@@ -52,7 +52,7 @@ pub async fn delete(
             request.connection_info().host(),
             file.path
         );
-        
+
         match cf::purge(&cf.cloudflare_api, &cf.cloudflare_zone, &url)
             .await
             .map_err(error::ErrorInternalServerError)?

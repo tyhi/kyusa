@@ -111,19 +111,13 @@ pub async fn check_api(
 
     let resp = sqlx::query!(
         r#"
-            SELECT COUNT(*)
-            FROM users
-            WHERE apikey = $1
+            SELECT exists( SELECT true FROM users WHERE apikey = $1 )
         "#,
         apikey
     )
     .fetch_one(&mut tx)
     .await?;
-    if resp.count == 0 {
-        Ok(false)
-    } else {
-        Ok(true)
-    }
+    Ok(resp.exists)
 }
 
 pub async fn delete_file(
