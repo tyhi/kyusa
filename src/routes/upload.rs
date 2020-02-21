@@ -78,7 +78,7 @@ pub async fn upload(
                     // Actual limit is 100MB however we might not be able to catch it before a chunk
                     // might put it over the limit.
                     if fs > 90_000_000 {
-                        if let Err(err) = del_file(Path::new(&file_names.temp_path)) {
+                        if let Err(err) = del_file(Path::new(&file_names.temp_path)).await {
                             return Err(error::ErrorInternalServerError(format!(
                                 "file larger than 90MB & failed to clean temp file: {}",
                                 err
@@ -92,7 +92,7 @@ pub async fn upload(
                 let del_key = nanoid::nanoid!(12, &nanoid::alphabet::SAFE);
 
                 // We rename in case something goes wrong.
-                std::fs::rename(&file_names.temp_path, &file_names.new_path)?;
+                async_std::fs::rename(&file_names.temp_path, &file_names.new_path).await?;
                 let domain = format!(
                     "{}://{}",
                     request.connection_info().scheme(),
@@ -144,7 +144,8 @@ async fn gen_upload_file(
     let extension = path
         .extension()
         .and_then(|s| s.to_str())
-        .ok_or_else(|| "no extension")?;
+        .ok_or_else(|| "no extension")?
+        .to_ascii_lowercase();
 
     // This loop makes sure that we don't have collision in file names.
     loop {
@@ -193,8 +194,7 @@ async fn check_header(
 ) -> Result<models::User, Box<dyn std::error::Error>> {
     let apikey = header
         .get("apikey")
-        .ok_or_else(|| "apikey header missing")?
-        .to_str()?
+        .map_or("", |s| s.to_str().unwrap_or(""))
         .to_string();
 
     if database::check_api(p.clone(), apikey.clone()).await? {

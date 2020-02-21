@@ -3,7 +3,6 @@ use crate::{
     Settings,
 };
 use actix_web::{error, get, web, HttpRequest, HttpResponse, Result};
-use async_std::prelude::*;
 use reqwest::StatusCode;
 use serde::Deserialize;
 use sqlx::PgPool;
@@ -28,14 +27,17 @@ pub async fn delete(
 ) -> Result<HttpResponse> {
     let file = database::get_file(p.clone(), format!("/{}/{}", path.folder, path.file))
         .await
-        .map_err(error::ErrorInternalServerError)?;
+        .map_err(|_| {
+            error::ErrorNotFound(
+                "file has already been deleted, or it may not have existed in the first place",
+            )
+        })?;
 
     if file.deletekey != del.del {
         return Err(error::ErrorUnauthorized("not a valid delete key"));
     }
-
-    let fp = format!("./uploads{}", file.path);
-    let file_path = path::Path::new(&fp);
+    let pa = format!("./uploads{}", file.path);
+    let file_path = path::Path::new(&pa);
 
     del_file(file_path)
         .await
@@ -58,7 +60,7 @@ pub async fn delete(
             .map_err(error::ErrorInternalServerError)?
         {
             StatusCode::OK => (),
-            (_) => {
+            _ => {
                 return Err(error::ErrorInternalServerError(
                     "file has been delete from os, however there was an error purging cache from \
                      cloudflare make sure your key has permission",
