@@ -3,9 +3,11 @@ use crate::{
     Settings,
 };
 use actix_web::{error, get, web, HttpRequest, HttpResponse, Result};
+use async_std::prelude::*;
+use reqwest::StatusCode;
 use serde::Deserialize;
 use sqlx::PgPool;
-use std::{fs, path};
+use std::path;
 
 #[derive(Deserialize)]
 pub struct FilePath {
@@ -35,7 +37,9 @@ pub async fn delete(
     let fp = format!("./uploads{}", file.path);
     let file_path = path::Path::new(&fp);
 
-    del_file(file_path).map_err(error::ErrorInternalServerError)?;
+    del_file(file_path)
+        .await
+        .map_err(error::ErrorInternalServerError)?;
 
     database::delete_file(p, format!("/{}/{}", path.folder, path.file))
         .await
@@ -48,24 +52,26 @@ pub async fn delete(
             request.connection_info().host(),
             file.path
         );
-        match cf::purge(&cf.cloudflare_api, &cf.cloudflare_zone, &url).await {
-            Ok(status) => {
-                if status != 200 {
-                    return Err(error::ErrorInternalServerError(
-                        "file has been delete from os, however there was an error purging cache \
-                         from cloudflare make sure your key has permission",
-                    ));
-                }
+        
+        match cf::purge(&cf.cloudflare_api, &cf.cloudflare_zone, &url)
+            .await
+            .map_err(error::ErrorInternalServerError)?
+        {
+            StatusCode::OK => (),
+            (_) => {
+                return Err(error::ErrorInternalServerError(
+                    "file has been delete from os, however there was an error purging cache from \
+                     cloudflare make sure your key has permission",
+                ));
             },
-            Err(err) => return Err(error::ErrorInternalServerError(err)),
         }
     }
 
     Ok(HttpResponse::Ok().body("file deleted"))
 }
 
-pub fn del_file(file_path: &path::Path) -> Result<(), Box<dyn std::error::Error>> {
-    fs::remove_file(file_path)?;
+pub async fn del_file(file_path: &path::Path) -> Result<(), Box<dyn std::error::Error>> {
+    async_std::fs::remove_file(file_path).await?;
 
     if file_path
         .parent()
@@ -74,7 +80,7 @@ pub fn del_file(file_path: &path::Path) -> Result<(), Box<dyn std::error::Error>
         .next()
         .is_none()
     {
-        fs::remove_dir(file_path.parent().ok_or("no parent directory")?)?;
+        async_std::fs::remove_dir(file_path.parent().ok_or("no parent directory")?).await?;
     }
     Ok(())
 }
