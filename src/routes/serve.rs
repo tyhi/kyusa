@@ -10,7 +10,7 @@ pub struct FilePath {
     pub file: String,
 }
 
-#[get("/u/{folder}/{file}")]
+#[get("/{folder}/{file}")]
 pub async fn serve(info: web::Path<FilePath>, p: web::Data<PgPool>) -> Result<NamedFile> {
     database::inc_file(p, format!("/{}/{}", info.folder, info.file))
         .await
