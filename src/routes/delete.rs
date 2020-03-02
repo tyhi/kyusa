@@ -9,23 +9,18 @@ use sqlx::PgPool;
 use std::path;
 
 #[derive(Deserialize)]
-pub struct FilePath {
-    pub folder: String,
-    pub file: String,
+pub struct Key {
+    pub key: String,
 }
-#[derive(Deserialize)]
-pub struct DeleteFile {
-    pub del: String,
-}
-#[get("/d/{folder}/{file}")]
+
+#[get("/d/{key}")]
 pub async fn delete(
     config: web::Data<Settings>,
-    path: web::Path<FilePath>,
-    del: web::Query<DeleteFile>,
+    path: web::Path<Key>,
     p: web::Data<PgPool>,
     request: HttpRequest,
 ) -> Result<HttpResponse> {
-    let file = database::get_file(p.clone(), format!("/{}/{}", path.folder, path.file))
+    let file = database::get_file_by_del(p.clone(), &path.key)
         .await
         .map_err(|_| {
             error::ErrorNotFound(
@@ -33,9 +28,6 @@ pub async fn delete(
             )
         })?;
 
-    if file.deletekey != del.del {
-        return Err(error::ErrorUnauthorized("not a valid delete key"));
-    }
     let pa = format!("./uploads{}", file.path);
     let file_path = path::Path::new(&pa);
 
@@ -43,7 +35,7 @@ pub async fn delete(
         .await
         .map_err(error::ErrorInternalServerError)?;
 
-    database::delete_file(p, format!("/{}/{}", path.folder, path.file))
+    database::delete_file(p, &file.path)
         .await
         .map_err(error::ErrorInternalServerError)?;
 
