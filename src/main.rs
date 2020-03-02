@@ -1,5 +1,5 @@
-#![warn(clippy::all, clippy::restriction, clippy::pedantic, clippy::nursery)]
-#![feature(async_closure)]
+#![warn(clippy::all, clippy::pedantic, clippy::nursery)]
+
 use actix_web::web;
 use dotenv::dotenv;
 use sqlx::PgPool;
