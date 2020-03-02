@@ -73,10 +73,10 @@ pub async fn upload(
                     f.write_all(&data).await?;
                     fs += data.len();
 
-                    // Hard coded 90MB upload limit to play nice with cloudflare.
+                    // Hard code 95MB upload limit to play nice with cloudflare.
                     // Actual limit is 100MB however we might not be able to catch it before a chunk
                     // might put it over the limit.
-                    if fs > 90_000_000 {
+                    if fs > 95_000_000 {
                         if let Err(err) = del_file(Path::new(&file_names.temp_path)).await {
                             return Err(error::ErrorInternalServerError(format!(
                                 "file larger than 90MB & failed to clean temp file: {}",
