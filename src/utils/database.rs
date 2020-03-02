@@ -15,7 +15,7 @@ pub async fn get_user(
         models::User,
         r#"
             select *
-            from kyous.public.users
+            from users
             where apikey = $1
         "#,
         api
