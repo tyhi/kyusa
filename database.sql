@@ -27,7 +27,7 @@ create table files
 (
 	id uuid default uuid_generate_v4() not null,
 	owner text not null,
-	uploaded timestamp not null,
+	uploaded timestamp default now() not null,
 	path text not null,
 	deletekey text not null,
 	filesize float8 not null,
@@ -35,7 +35,7 @@ create table files
 );
 
 create unique index file_uuid_uindex
-	on files (uuid);
+	on files (id);
 
 alter table files
 	add constraint file_pk

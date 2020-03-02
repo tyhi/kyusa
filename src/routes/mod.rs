@@ -16,8 +16,12 @@ static MSG: &[u8] = &[
 #[get("/k")]
 pub async fn k() -> Result<&'static str> { Ok(from_utf8(MSG)?) }
 
+#[get("")]
+pub async fn index() -> &'static str { "index" }
+
 pub fn routes() -> Scope {
     web::scope("/")
+        .service(index)
         .service(delete::delete)
         .service(stats::stats)
         .service(upload::upload)

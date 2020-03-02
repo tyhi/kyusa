@@ -32,7 +32,7 @@ struct NamedReturn {
 
 const RANDOM_FILE_EXT: &[&str] = &["png", "jpeg", "jpg", "webm", "gif", "avi", "mp4"];
 
-#[post("/u")]
+#[post("")]
 pub async fn upload(
     mut multipart: Multipart,
     config: Data<Settings>,
@@ -67,7 +67,6 @@ pub async fn upload(
 
                 // fs keeps track of how big the file is.
                 let mut fs = 0;
-
                 // iter over all chunks we get from client.
                 while let Some(chunk) = file.next().await {
                     let data = chunk?;
@@ -130,11 +129,15 @@ pub async fn upload(
 async fn gen_upload_file(
     content: &ContentDisposition,
 ) -> Result<NamedReturn, Box<dyn std::error::Error>> {
-    let path = std::path::Path::new(
-        content
+    let filen = str::replace(
+        &content
             .get_filename()
             .ok_or_else(|| "error getting filename")?,
+        " ",
+        "_",
     );
+
+    let path = std::path::Path::new(&filen);
 
     let file_name = path
         .file_stem()
@@ -160,8 +163,11 @@ async fn gen_upload_file(
 
         let path = format!("./uploads/{}/{}.{}", folder_dir, name, extension);
 
-        if !Path::new(&path).exists() {
-            if !Path::new(&format!("./uploads/{}", folder_dir)).exists() {
+        if !async_std::path::Path::new(&path).exists().await {
+            if !async_std::path::Path::new(&format!("./uploads/{}", folder_dir))
+                .exists()
+                .await
+            {
                 async_std::fs::create_dir_all(format!("./uploads/{}", folder_dir)).await?;
             }
 
