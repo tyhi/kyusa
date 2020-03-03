@@ -14,7 +14,7 @@ pub struct FilePath {
 pub async fn serve(info: web::Path<FilePath>, p: web::Data<PgPool>) -> Result<NamedFile> {
     database::inc_file(p, format!("/{}/{}", info.folder, info.file))
         .await
-        .map_err(error::ErrorInternalServerError)?;
+        .map_err(|_| error::ErrorNotFound("file does not exist"))?;
 
     Ok(NamedFile::open(format!(
         "./uploads/{}/{}",
