@@ -6,6 +6,9 @@ edition = "2018"
 repository = "https://github.com/tyhi/kyusa"
 build = "build.rs"
 
+[build]
+rustflags = "-C target-cpu=native"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -30,7 +33,6 @@ built = { version = "0.4.0", features = ["git2"] }
 
 [profile.release]
 lto = "fat"
-target-cpu = "native"
 codegen-units = 1
 panic = "abort"
 
