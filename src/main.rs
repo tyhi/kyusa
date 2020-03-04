@@ -23,6 +23,15 @@ pub mod built_info {
     include!(concat!(env!("OUT_DIR"), "/built.rs"));
 }
 
+macro_rules! enclose {
+    ( ($( $x:ident ),*) $y:expr ) => {
+        {
+            $(let $x = $x.clone();)*
+            $y
+        }
+    };
+}
+
 #[derive(Clone)]
 pub struct Settings {
     pub multipart_name: String,
@@ -58,6 +67,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         multipart_name: env::var("KYUSA_MULTIPARTNAME")?,
         cloudflare_details: cloudflare,
     };
+
+    // This is our cron job that will run various tasks every once in a while.
+    actix_rt::spawn(
+        enclose! { (pool, settings) async move { utils::cron::init(pool, settings).await}},
+    );
 
     if !std::path::Path::new("./uploads").exists() {
         std::fs::create_dir_all("./uploads")?;
