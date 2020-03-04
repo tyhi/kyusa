@@ -7,6 +7,7 @@
     dead_code
 )]
 
+use actix_rt::Arbiter;
 use actix_web::web;
 use dotenv::dotenv;
 use sqlx::PgPool;
@@ -69,7 +70,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     // This is our cron job that will run various tasks every once in a while.
-    actix_rt::spawn(
+    // However this thread will never quit.
+    async_std::task::spawn(
         enclose! { (pool, settings) async move { utils::cron::init(pool, settings).await}},
     );
 
