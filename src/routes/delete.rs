@@ -2,7 +2,11 @@ use crate::{
     utils::{cf, database},
     Settings,
 };
-use actix_web::{error, get, web, HttpRequest, HttpResponse, Result};
+use actix_web::{
+    error, get,
+    web::{Data, Path},
+    HttpRequest, HttpResponse, Result,
+};
 use async_std::path;
 use futures::StreamExt;
 use reqwest::StatusCode;
@@ -16,12 +20,12 @@ pub struct Key {
 
 #[get("/d/{key}")]
 pub async fn delete(
-    config: web::Data<Settings>,
-    path: web::Path<Key>,
-    p: web::Data<PgPool>,
+    config: Data<Settings>,
+    path: Path<Key>,
+    p: Data<PgPool>,
     request: HttpRequest,
 ) -> Result<HttpResponse> {
-    let file = database::get_file_by_del(p.clone(), &path.key)
+    let file = database::get_file_by_del(Data::clone(&p), &path.key)
         .await
         .map_err(|_| {
             error::ErrorNotFound(
@@ -48,17 +52,15 @@ pub async fn delete(
             file.path
         );
 
-        match cf::purge(&cf.cloudflare_api, &cf.cloudflare_zone, &url)
+        if let StatusCode::OK = cf::purge(&cf.cloudflare_api, &cf.cloudflare_zone, &url)
             .await
             .map_err(error::ErrorInternalServerError)?
         {
-            StatusCode::OK => (),
-            _ => {
-                return Err(error::ErrorInternalServerError(
-                    "file has been delete from os, however there was an error purging cache from \
-                     cloudflare make sure your key has permission",
-                ));
-            },
+        } else {
+            return Err(error::ErrorInternalServerError(
+                "file has been delete from os, however there was an error purging cache from \
+                 cloudflare make sure your key has permission",
+            ));
         }
     }
 

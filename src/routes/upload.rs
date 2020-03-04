@@ -31,6 +31,7 @@ struct NamedReturn {
 
 const RANDOM_FILE_EXT: &[&str] = &["png", "jpeg", "jpg", "webm", "gif", "avi", "mp4"];
 
+#[allow(clippy::cast_precision_loss, clippy::as_conversions)]
 #[post("")]
 pub async fn upload(
     mut multipart: Multipart,
@@ -38,7 +39,7 @@ pub async fn upload(
     request: HttpRequest,
     p: Data<PgPool>,
 ) -> Result<HttpResponse> {
-    let user = check_header(request.headers(), p.clone())
+    let user = check_header(request.headers(), Data::clone(&p))
         .await
         .map_err(error::ErrorUnauthorized)?;
 
@@ -65,17 +66,18 @@ pub async fn upload(
                 let mut f = async_std::fs::File::create(&file_names.temp_path).await?;
 
                 // fs keeps track of how big the file is.
-                let mut fs = 0;
+                let mut fs: f64 = 0.0;
                 // iter over all chunks we get from client.
                 while let Some(chunk) = file.next().await {
                     let data = chunk?;
                     f.write_all(&data).await?;
-                    fs += data.len();
+
+                    fs += data.len() as f64;
 
                     // Hard code 95MB upload limit to play nice with cloudflare.
                     // Actual limit is 100MB however we might not be able to catch it before a chunk
                     // might put it over the limit.
-                    if fs > 95_000_000 {
+                    if fs > 95_000_000.0 {
                         if let Err(err) =
                             del_file(async_std::path::Path::new(&file_names.temp_path)).await
                         {
@@ -105,8 +107,8 @@ pub async fn upload(
                         owner: user.username,
                         uploaded: chrono::Utc::now().naive_utc(),
                         path: format!("{}.{}", file_names.uri, file_names.ext),
-                        deletekey: del_key.clone(),
-                        filesize: (fs as f64 / 1_000_000.0),
+                        deletekey: &del_key,
+                        filesize: (fs / 1_000_000.0),
                         downloads: 0,
                     },
                 )
@@ -128,7 +130,7 @@ async fn gen_upload_file(
     content: &ContentDisposition,
 ) -> Result<NamedReturn, Box<dyn std::error::Error>> {
     let filen = str::replace(
-        &content
+        content
             .get_filename()
             .ok_or_else(|| "error getting filename")?,
         " ",
@@ -139,21 +141,22 @@ async fn gen_upload_file(
 
     let file_name = path
         .file_stem()
-        .and_then(|s| s.to_str())
+        .and_then(std::ffi::OsStr::to_str)
         .ok_or_else(|| "no file_name")?;
 
     let extension = path
         .extension()
-        .and_then(|s| s.to_str())
+        .and_then(std::ffi::OsStr::to_str)
         .ok_or_else(|| "no extension")?
         .to_ascii_lowercase();
 
     // This loop makes sure that we don't have collision in file names.
     loop {
         // Cheaking to see if our file needs to have random name.
-        let name = match RANDOM_FILE_EXT.iter().any(|x| x == &extension) {
-            false => file_name.to_owned(),
-            true => nanoid::nanoid!(6, &nanoid::alphabet::SAFE),
+        let name = if RANDOM_FILE_EXT.iter().any(|x| x == &extension) {
+            nanoid::nanoid!(6, &nanoid::alphabet::SAFE)
+        } else {
+            file_name.to_owned()
         };
 
         // Creating our random folder name.
@@ -201,7 +204,7 @@ async fn check_header(
         .map_or("", |s| s.to_str().unwrap_or(""))
         .to_string();
 
-    if database::check_api(p.clone(), apikey.clone()).await? {
+    if database::check_api(Data::clone(&p), &apikey).await? {
         return Ok(database::get_user(p, apikey).await?);
     }
 

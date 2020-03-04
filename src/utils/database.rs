@@ -26,7 +26,7 @@ pub async fn get_user(
 }
 
 pub async fn insert_user(
-    p: PgPool,
+    p: Data<PgPool>,
     user: models::InsertUser,
 ) -> Result<models::User, Box<dyn std::error::Error>> {
     let mut tx = p.begin().await?;
@@ -58,7 +58,7 @@ pub async fn insert_user(
 
 pub async fn insert_file(
     p: Data<PgPool>,
-    file: models::InsertFile,
+    file: models::InsertFile<'_>,
 ) -> Result<Uuid, Box<dyn std::error::Error>> {
     let mut tx = p.begin().await?;
 
@@ -70,7 +70,7 @@ pub async fn insert_file(
         "#,
         file.owner,
         file.path,
-        file.deletekey,
+        file.deletekey.to_string(),
         file.filesize
     )
     .fetch_one(&mut tx)

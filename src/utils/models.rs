@@ -29,11 +29,11 @@ pub struct File {
     pub downloads: i64,
 }
 
-pub struct InsertFile {
+pub struct InsertFile<'a> {
     pub owner: String,
     pub uploaded: NaiveDateTime,
     pub path: String,
-    pub deletekey: String,
+    pub deletekey: &'a str,
     pub filesize: f64,
     pub downloads: i64,
 }

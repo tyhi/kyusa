@@ -1,4 +1,11 @@
-#![warn(clippy::all, clippy::pedantic, clippy::nursery)]
+#![warn(clippy::all, clippy::pedantic, clippy::nursery, clippy::restriction)]
+#![allow(
+    clippy::missing_docs_in_private_items,
+    clippy::integer_arithmetic,
+    clippy::implicit_return,
+    clippy::float_arithmetic,
+    dead_code
+)]
 
 use actix_web::web;
 use dotenv::dotenv;
