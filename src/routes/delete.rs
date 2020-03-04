@@ -3,10 +3,11 @@ use crate::{
     Settings,
 };
 use actix_web::{error, get, web, HttpRequest, HttpResponse, Result};
+use async_std::path;
+use futures::StreamExt;
 use reqwest::StatusCode;
 use serde::Deserialize;
 use sqlx::PgPool;
-use std::path;
 
 #[derive(Deserialize)]
 pub struct Key {
@@ -69,12 +70,14 @@ pub async fn del_file(file_path: &path::Path) -> Result<(), Box<dyn std::error::
 
     if file_path
         .parent()
-        .ok_or("no parent directory")?
-        .read_dir()?
+        .ok_or_else(|| "no parent directory")?
+        .read_dir()
+        .await?
         .next()
+        .await
         .is_none()
     {
-        async_std::fs::remove_dir(file_path.parent().ok_or("no parent directory")?).await?;
+        async_std::fs::remove_dir(file_path.parent().ok_or_else(|| "no parent directory")?).await?;
     }
     Ok(())
 }

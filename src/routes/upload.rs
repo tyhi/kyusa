@@ -15,7 +15,6 @@ use async_std::prelude::*;
 use futures::StreamExt;
 use serde::Serialize;
 use sqlx::PgPool;
-use std::path::Path;
 
 #[derive(Serialize)]
 struct UploadResp {
@@ -77,7 +76,9 @@ pub async fn upload(
                     // Actual limit is 100MB however we might not be able to catch it before a chunk
                     // might put it over the limit.
                     if fs > 95_000_000 {
-                        if let Err(err) = del_file(Path::new(&file_names.temp_path)).await {
+                        if let Err(err) =
+                            del_file(async_std::path::Path::new(&file_names.temp_path)).await
+                        {
                             return Err(error::ErrorInternalServerError(format!(
                                 "file larger than 90MB & failed to clean temp file: {}",
                                 err
@@ -172,7 +173,7 @@ async fn gen_upload_file(
                 new_path: path,
                 temp_path: format!("./uploads/{}/{}.{}.~tmp", folder_dir, name, extension),
                 uri: format!("/{}/{}", folder_dir, name),
-                ext: format!("{}", extension),
+                ext: extension.to_string(),
             });
         }
     }
