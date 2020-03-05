@@ -4,6 +4,7 @@
     clippy::integer_arithmetic,
     clippy::implicit_return,
     clippy::float_arithmetic,
+    clippy::panic,
     dead_code
 )]
 

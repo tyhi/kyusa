@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 pub async fn get_user(
     p: Data<PgPool>,
-    api: String,
+    api: &str,
 ) -> Result<models::User, Box<dyn std::error::Error>> {
     let mut tx = p.begin().await?;
 
@@ -70,7 +70,7 @@ pub async fn insert_file(
         "#,
         file.owner,
         file.path,
-        file.deletekey.to_string(),
+        file.deletekey,
         file.filesize
     )
     .fetch_one(&mut tx)
@@ -81,13 +81,10 @@ pub async fn insert_file(
     Ok(rec.id)
 }
 
-pub async fn get_file<S>(
+pub async fn get_file(
     p: Data<PgPool>,
-    path: S,
-) -> Result<models::File, Box<dyn std::error::Error>>
-where
-    S: Into<String>,
-{
+    path: &str,
+) -> Result<models::File, Box<dyn std::error::Error>> {
     let mut tx = p.begin().await?;
 
     let resp: models::File = sqlx::query_as!(
@@ -97,7 +94,7 @@ where
             FROM files
             WHERE path = $1
         "#,
-        path.into()
+        path
     )
     .fetch_one(&mut tx)
     .await?;
@@ -105,13 +102,10 @@ where
     Ok(resp)
 }
 
-pub async fn get_file_by_del<S>(
+pub async fn get_file_by_del(
     p: Data<PgPool>,
-    key: S,
-) -> Result<models::File, Box<dyn std::error::Error>>
-where
-    S: Into<String>,
-{
+    key: &str,
+) -> Result<models::File, Box<dyn std::error::Error>> {
     let mut tx = p.begin().await?;
 
     let resp: models::File = sqlx::query_as!(
@@ -121,7 +115,7 @@ where
             FROM files
             WHERE deletekey = $1
         "#,
-        key.into()
+        key
     )
     .fetch_one(&mut tx)
     .await?;
@@ -129,30 +123,24 @@ where
     Ok(resp)
 }
 
-pub async fn check_api<S>(p: Data<PgPool>, apikey: S) -> Result<bool, Box<dyn std::error::Error>>
-where
-    S: Into<String>,
-{
+pub async fn check_api(p: Data<PgPool>, apikey: &str) -> Result<bool, Box<dyn std::error::Error>> {
     let mut tx = p.begin().await?;
 
     let resp = sqlx::query!(
         r#"
             SELECT exists( SELECT true FROM users WHERE apikey = $1 )
         "#,
-        apikey.into()
+        apikey
     )
     .fetch_one(&mut tx)
     .await?;
     Ok(resp.exists)
 }
 
-pub async fn delete_file<S>(
+pub async fn delete_file(
     p: Data<PgPool>,
-    filepath: S,
-) -> Result<Uuid, Box<dyn std::error::Error>>
-where
-    S: Into<String>,
-{
+    filepath: &str,
+) -> Result<Uuid, Box<dyn std::error::Error>> {
     let mut tx = p.begin().await?;
     let id = sqlx::query!(
         r#"
@@ -160,7 +148,7 @@ where
             WHERE path = $1
             RETURNING id
         "#,
-        filepath.into()
+        filepath
     )
     .fetch_one(&mut tx)
     .await?;
@@ -187,10 +175,7 @@ pub async fn get_metrics(p: Data<PgPool>) -> Result<models::Metrics, Box<dyn std
     Ok(metrics)
 }
 
-pub async fn inc_file<S>(p: Data<PgPool>, filepath: S) -> Result<(), Box<dyn std::error::Error>>
-where
-    S: Into<String>,
-{
+pub async fn inc_file(p: Data<PgPool>, filepath: &str) -> Result<(), Box<dyn std::error::Error>> {
     let mut tx = p.begin().await?;
 
     let _ = sqlx::query!(
@@ -200,7 +185,7 @@ where
             WHERE path = $1
             RETURNING id
         "#,
-        filepath.into()
+        filepath
     )
     .fetch_one(&mut tx)
     .await?;

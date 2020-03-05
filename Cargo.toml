@@ -25,10 +25,6 @@ serde_json = "1.0.48"
 sqlx = { git = "https://github.com/launchbadge/sqlx", branch = "develop", default-features = false, features = [ "runtime-tokio", "macros", "uuid", "postgres", "chrono" ] }
 uuid = { version = "0.8.1", features = ["serde"] }
 
-[patch.crates-io.failure]
-git = "https://github.com/grokse/failure"
-branch = "build_quote_103"
-
 [build-dependencies]
 built = { version = "0.4.0", features = ["git2"] }
 

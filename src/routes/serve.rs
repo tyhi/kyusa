@@ -12,7 +12,7 @@ pub struct FilePath {
 
 #[get("/{folder}/{file}")]
 pub async fn serve(info: web::Path<FilePath>, p: web::Data<PgPool>) -> Result<NamedFile> {
-    database::inc_file(p, format!("/{}/{}", info.folder, info.file))
+    database::inc_file(p, &format!("/{}/{}", info.folder, info.file))
         .await
         .map_err(|_| error::ErrorNotFound("file does not exist"))?;
 

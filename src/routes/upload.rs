@@ -205,7 +205,7 @@ async fn check_header(
         .to_string();
 
     if database::check_api(Data::clone(&p), &apikey).await? {
-        return Ok(database::get_user(p, apikey).await?);
+        return Ok(database::get_user(p, &apikey).await?);
     }
 
     Err("invalid api_key".into())
