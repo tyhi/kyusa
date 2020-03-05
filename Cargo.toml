@@ -19,7 +19,6 @@ dotenv = "0.15.0"
 futures = "0.3.4"
 mimalloc = { version = "0.1.17", default-features = false }
 nanoid = "0.3.0"
-quote = "=1.0.2"
 reqwest = "0.10.4"
 serde = "1.0.104"
 serde_json = "1.0.48"
