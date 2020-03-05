@@ -7,7 +7,6 @@
     dead_code
 )]
 
-use actix_rt::Arbiter;
 use actix_web::web;
 use dotenv::dotenv;
 use sqlx::PgPool;
