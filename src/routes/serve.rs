@@ -11,6 +11,10 @@ pub struct FilePath {
 
 #[get("/{folder}/{file}")]
 pub async fn serve(info: web::Path<FilePath>, db: Data<sled::Db>) -> Result<NamedFile> {
+    if !std::path::Path::new(&format!("./uploads/{}/{}", info.folder, info.file)).exists() {
+        return Err(error::ErrorNotFound("file does not exist"));
+    }
+
     db::inc_file(db, format!("/{}/{}", info.folder, info.file))
         .await
         .map_err(|_| error::ErrorNotFound("file does not exist"))?;
