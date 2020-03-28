@@ -42,7 +42,10 @@ async fn p404() -> &'static str { "this resource does not exist." }
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
 
-    let db = sled::open("./db")?;
+    let db = sled::Config::new()
+        .use_compression(true)
+        .path("./db")
+        .open()?;
 
     db.iter();
 
