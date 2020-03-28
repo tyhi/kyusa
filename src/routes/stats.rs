@@ -1,7 +1,6 @@
-use crate::{built_info, utils::database};
+use crate::{built_info, utils::db};
 use actix_web::{error, get, web::Data, HttpResponse, Result};
 use serde::Serialize;
-use sqlx::PgPool;
 
 #[derive(Serialize)]
 struct Stats {
@@ -14,8 +13,8 @@ struct Stats {
 }
 
 #[get("/stats")]
-pub async fn stats(p: Data<PgPool>) -> Result<HttpResponse> {
-    let metrics = database::get_metrics(p)
+pub async fn stats(db: Data<sled::Db>) -> Result<HttpResponse> {
+    let metrics = db::get_metrics(db)
         .await
         .map_err(error::ErrorInternalServerError)?;
 

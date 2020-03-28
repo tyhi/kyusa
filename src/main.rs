@@ -5,12 +5,12 @@
     clippy::implicit_return,
     clippy::float_arithmetic,
     clippy::panic,
+    clippy::result_expect_used,
     dead_code
 )]
 
 use actix_web::web;
 use dotenv::dotenv;
-use sqlx::PgPool;
 use std::env;
 
 mod routes;
@@ -22,15 +22,6 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 pub mod built_info {
     // The file has been placed there by the build script.
     include!(concat!(env!("OUT_DIR"), "/built.rs"));
-}
-
-macro_rules! enclose {
-    ( ($( $x:ident ),*) $y:expr ) => {
-        {
-            $(let $x = $x.clone();)*
-            $y
-        }
-    };
 }
 
 #[derive(Clone)]
@@ -51,7 +42,11 @@ async fn p404() -> &'static str { "this resource does not exist." }
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
 
-    let pool = PgPool::new(&env::var("DATABASE_URL")?).await?;
+    let db = sled::open("./db")?;
+
+    db.iter();
+
+    first_run_check(web::Data::new(db.clone())).await?;
 
     let cloudflare: Option<Cloudflare>;
 
@@ -71,9 +66,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // This is our cron job that will run various tasks every once in a while.
     // However this thread will never quit.
-    async_std::task::spawn(
-        enclose! { (pool, settings) async move { utils::cron::init(pool, settings).await}},
-    );
 
     if !std::path::Path::new("./uploads").exists() {
         std::fs::create_dir_all("./uploads")?;
@@ -86,7 +78,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     actix_web::HttpServer::new(move || {
         actix_web::App::new()
             .data(settings.clone())
-            .data(pool.clone())
+            .data(db.clone())
             .service(routes::routes())
             .default_service(web::resource("").route(web::get().to(p404)))
     })
@@ -94,4 +86,38 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .run()
     .await?;
     Ok(())
+}
+
+async fn first_run_check(db: web::Data<sled::Db>) -> anyhow::Result<()> {
+    let m = utils::db::get_metrics(db.clone()).await?;
+    if m.users == 0 {
+        println!("Detected first run, setting up default admin account.");
+        println!("Enter username:");
+        let username = get_input();
+
+        println!("Enter email:");
+        let email = get_input();
+
+        let user = utils::models::User {
+            username,
+            email,
+            apikey: nanoid::nanoid!(24, &nanoid::alphabet::SAFE),
+            ipaddr: "NA".to_string(),
+            admin: true,
+        };
+
+        println!("{}", format!("\nHere is your apikey: {}", user.apikey));
+
+        utils::db::insert_user(db, user).await?;
+    }
+
+    Ok(())
+}
+
+fn get_input() -> String {
+    let mut s = String::new();
+    std::io::stdin()
+        .read_line(&mut s)
+        .expect("error reading stdin");
+    s.trim().to_string()
 }

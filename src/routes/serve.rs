@@ -1,8 +1,7 @@
-use crate::utils::database;
+use crate::utils::db;
 use actix_files::NamedFile;
-use actix_web::{error, get, web, Result};
+use actix_web::{error, get, web, web::Data, Result};
 use serde::Deserialize;
-use sqlx::PgPool;
 
 #[derive(Deserialize)]
 pub struct FilePath {
@@ -11,8 +10,8 @@ pub struct FilePath {
 }
 
 #[get("/{folder}/{file}")]
-pub async fn serve(info: web::Path<FilePath>, p: web::Data<PgPool>) -> Result<NamedFile> {
-    database::inc_file(p, &format!("/{}/{}", info.folder, info.file))
+pub async fn serve(info: web::Path<FilePath>, db: Data<sled::Db>) -> Result<NamedFile> {
+    db::inc_file(db, format!("/{}/{}", info.folder, info.file))
         .await
         .map_err(|_| error::ErrorNotFound("file does not exist"))?;
 

@@ -1,6 +1,6 @@
 use crate::{
     routes::delete::del_file,
-    utils::{database, models},
+    utils::{db, models},
     Settings,
 };
 use actix_multipart::Multipart;
@@ -11,10 +11,9 @@ use actix_web::{
     web::Data,
     HttpRequest, HttpResponse, Result,
 };
-use async_std::prelude::*;
 use futures::StreamExt;
 use serde::Serialize;
-use sqlx::PgPool;
+use tokio::{fs, io::AsyncWriteExt};
 
 #[derive(Serialize)]
 struct UploadResp {
@@ -36,10 +35,10 @@ const RANDOM_FILE_EXT: &[&str] = &["png", "jpeg", "jpg", "webm", "gif", "avi", "
 pub async fn upload(
     mut multipart: Multipart,
     config: Data<Settings>,
+    db: Data<sled::Db>,
     request: HttpRequest,
-    p: Data<PgPool>,
 ) -> Result<HttpResponse> {
-    let user = check_header(request.headers(), Data::clone(&p))
+    let user = check_header(Data::clone(&db), request.headers())
         .await
         .map_err(error::ErrorUnauthorized)?;
 
@@ -63,7 +62,7 @@ pub async fn upload(
                 })?;
 
                 // Create the temp. file to work with wile we iter over all the chunks.
-                let mut f = async_std::fs::File::create(&file_names.temp_path).await?;
+                let mut f = fs::File::create(&file_names.temp_path).await?;
 
                 // fs keeps track of how big the file is.
                 let mut fs: f64 = 0.0;
@@ -79,7 +78,7 @@ pub async fn upload(
                     // might put it over the limit.
                     if fs > 95_000_000.0 {
                         if let Err(err) =
-                            del_file(async_std::path::Path::new(&file_names.temp_path)).await
+                            del_file(std::path::Path::new(&file_names.temp_path)).await
                         {
                             return Err(error::ErrorInternalServerError(format!(
                                 "file larger than 90MB & failed to clean temp file: {}",
@@ -94,20 +93,19 @@ pub async fn upload(
                 let del_key = nanoid::nanoid!(12, &nanoid::alphabet::SAFE);
 
                 // We rename in case something goes wrong.
-                async_std::fs::rename(&file_names.temp_path, &file_names.new_path).await?;
+                fs::rename(&file_names.temp_path, &file_names.new_path).await?;
                 let domain = format!(
                     "{}://{}",
                     request.connection_info().scheme(),
                     request.connection_info().host()
                 );
-
-                database::insert_file(
-                    p,
-                    models::InsertFile {
+                db::insert_file(
+                    db,
+                    models::File {
                         owner: user.username,
                         uploaded: chrono::Utc::now().naive_utc(),
                         path: format!("{}.{}", file_names.uri, file_names.ext),
-                        deletekey: &del_key,
+                        deletekey: del_key.clone(),
                         filesize: (fs / 1_000_000.0),
                         downloads: 0,
                     },
@@ -164,12 +162,9 @@ async fn gen_upload_file(
 
         let path = format!("./uploads/{}/{}.{}", folder_dir, name, extension);
 
-        if !async_std::path::Path::new(&path).exists().await {
-            if !async_std::path::Path::new(&format!("./uploads/{}", folder_dir))
-                .exists()
-                .await
-            {
-                async_std::fs::create_dir_all(format!("./uploads/{}", folder_dir)).await?;
+        if !std::path::Path::new(&path).exists() {
+            if !std::path::Path::new(&format!("./uploads/{}", folder_dir)).exists() {
+                fs::create_dir_all(format!("./uploads/{}", folder_dir)).await?;
             }
 
             return Ok(NamedReturn {
@@ -195,18 +190,15 @@ fn check_name(field: &ContentDisposition, name: &str) -> Result<bool, Box<dyn st
 }
 
 // Checks headers to see if key is valid.
-async fn check_header(
-    header: &HeaderMap,
-    p: Data<PgPool>,
-) -> Result<models::User, Box<dyn std::error::Error>> {
+async fn check_header(db: Data<sled::Db>, header: &HeaderMap) -> anyhow::Result<models::User> {
     let apikey = header
         .get("apikey")
         .map_or("", |s| s.to_str().unwrap_or(""))
         .to_string();
 
-    if database::check_api(Data::clone(&p), &apikey).await? {
-        return Ok(database::get_user(p, &apikey).await?);
+    if db::check_api(Data::clone(&db), apikey.clone()).await? {
+        return Ok(db::get_user(db, apikey).await?);
     }
 
-    Err("invalid api_key".into())
+    Err(anyhow::anyhow!("invalid api_key"))
 }

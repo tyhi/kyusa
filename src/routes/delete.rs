@@ -1,5 +1,5 @@
 use crate::{
-    utils::{cf, database},
+    utils::{cf, db},
     Settings,
 };
 use actix_web::{
@@ -7,11 +7,9 @@ use actix_web::{
     web::{Data, Path},
     HttpRequest, HttpResponse, Result,
 };
-use async_std::path;
-use futures::StreamExt;
 use reqwest::StatusCode;
 use serde::Deserialize;
-use sqlx::PgPool;
+use tokio::fs;
 
 #[derive(Deserialize)]
 pub struct Key {
@@ -22,10 +20,10 @@ pub struct Key {
 pub async fn delete(
     config: Data<Settings>,
     path: Path<Key>,
-    p: Data<PgPool>,
+    db: Data<sled::Db>,
     request: HttpRequest,
 ) -> Result<HttpResponse> {
-    let file = database::get_file_by_del(Data::clone(&p), &path.key)
+    let file = db::get_file_by_del(Data::clone(&db), path.key.clone())
         .await
         .map_err(|_| {
             error::ErrorNotFound(
@@ -34,13 +32,13 @@ pub async fn delete(
         })?;
 
     let pa = format!("./uploads{}", file.path);
-    let file_path = path::Path::new(&pa);
+    let file_path = std::path::Path::new(&pa);
 
     del_file(file_path)
         .await
         .map_err(error::ErrorInternalServerError)?;
 
-    database::delete_file(p, &file.path)
+    db::delete_file(db, file.path.clone())
         .await
         .map_err(error::ErrorInternalServerError)?;
 
@@ -67,19 +65,17 @@ pub async fn delete(
     Ok(HttpResponse::Ok().body("file deleted"))
 }
 
-pub async fn del_file(file_path: &path::Path) -> Result<(), Box<dyn std::error::Error>> {
-    async_std::fs::remove_file(file_path).await?;
+pub async fn del_file(file_path: &std::path::Path) -> Result<(), Box<dyn std::error::Error>> {
+    fs::remove_file(file_path).await?;
 
     if file_path
         .parent()
         .ok_or_else(|| "no parent directory")?
-        .read_dir()
-        .await?
+        .read_dir()?
         .next()
-        .await
         .is_none()
     {
-        async_std::fs::remove_dir(file_path.parent().ok_or_else(|| "no parent directory")?).await?;
+        fs::remove_dir(file_path.parent().ok_or_else(|| "no parent directory")?).await?;
     }
     Ok(())
 }
