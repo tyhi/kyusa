@@ -66,7 +66,7 @@ pub async fn check_api(db: Data<Db>, key: String) -> Result<bool> {
 
 pub async fn delete_file(db: Data<Db>, path: String) -> Result<()> {
     Ok(spawn_blocking(move || -> Result<()> {
-        db.remove(path)?;
+        db.remove(format!("file_{}", path))?;
         Ok(())
     })
     .await??)

@@ -88,6 +88,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+#[allow(clippy::print_stdout)]
 async fn first_run_check(db: web::Data<sled::Db>) -> anyhow::Result<()> {
     let m = utils::db::get_metrics(db.clone()).await?;
     if m.users == 0 {
