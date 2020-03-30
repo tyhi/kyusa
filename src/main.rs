@@ -47,7 +47,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .path("./db")
         .open()?;
 
-    db.iter();
+    db.len();
 
     first_run_check(web::Data::new(db.clone())).await?;
 
@@ -66,9 +66,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         multipart_name: env::var("KYUSA_MULTIPARTNAME")?,
         cloudflare_details: cloudflare,
     };
-
-    // This is our cron job that will run various tasks every once in a while.
-    // However this thread will never quit.
 
     if !std::path::Path::new("./uploads").exists() {
         std::fs::create_dir_all("./uploads")?;

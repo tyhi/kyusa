@@ -31,10 +31,7 @@ pub async fn delete(
             )
         })?;
 
-    let pa = format!("./uploads{}", file.path);
-    let file_path = std::path::Path::new(&pa);
-
-    del_file(file_path)
+    del_file(std::path::Path::new(&format!("./uploads{}", file.path)))
         .await
         .map_err(error::ErrorInternalServerError)?;
 

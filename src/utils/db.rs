@@ -90,7 +90,7 @@ pub async fn get_metrics(db: Data<Db>) -> Result<models::Metrics> {
             metrics.served += file.filesize * file.downloads as f64;
         }
         for user in db.scan_prefix("api_") {
-            let (_, _) = user?;
+            user?;
             metrics.users += 1;
         }
         Ok(metrics)
