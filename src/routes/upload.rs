@@ -11,7 +11,7 @@ use actix_web::{
     web::Data,
     HttpRequest, HttpResponse, Result,
 };
-use futures::{StreamExt, TryStreamExt};
+use futures::{StreamExt, TryFutureExt, TryStreamExt};
 use serde::Serialize;
 use tokio::{fs, io::AsyncWriteExt};
 
@@ -74,12 +74,15 @@ pub async fn upload(
             // Actual limit is 100MB however we might not be able to catch it before a chunk
             // might put it over the limit.
             if fs > 95_000_000.0 {
-                if let Err(err) = del_file(std::path::Path::new(&file_names.temp_path)).await {
-                    return Err(error::ErrorInternalServerError(format!(
-                        "file larger than 90MB & failed to clean temp file: {}",
-                        err
-                    )));
-                }
+                del_file(std::path::Path::new(&file_names.temp_path))
+                    .await
+                    .map_err(|e| {
+                        error::ErrorInternalServerError(format!(
+                            "file larger than 90MB & failed to clean temp file: {}",
+                            e
+                        ))
+                    })?;
+
                 return Err(error::ErrorPayloadTooLarge("larger than 100mb limit"));
             }
         }
@@ -117,13 +120,11 @@ pub async fn upload(
 }
 
 // Takes the input file name and generates the correct paths needed.
-async fn gen_upload_file(
-    content: &ContentDisposition,
-) -> Result<NamedReturn, Box<dyn std::error::Error>> {
+async fn gen_upload_file(content: &ContentDisposition) -> anyhow::Result<NamedReturn> {
     let filen = str::replace(
         content
             .get_filename()
-            .ok_or_else(|| "error getting filename")?,
+            .ok_or_else(|| anyhow::anyhow!("error getting filename"))?,
         " ",
         "_",
     );
@@ -133,18 +134,19 @@ async fn gen_upload_file(
     let file_name = path
         .file_stem()
         .and_then(std::ffi::OsStr::to_str)
-        .ok_or_else(|| "no file_name")?;
+        .ok_or_else(|| anyhow::anyhow!("no file_name"))?;
 
     let extension = path
         .extension()
         .and_then(std::ffi::OsStr::to_str)
-        .ok_or_else(|| "no extension")?
+        .ok_or_else(|| anyhow::anyhow!("no extension"))?
         .to_ascii_lowercase();
 
     // This loop makes sure that we don't have collision in file names.
     loop {
         // Cheaking to see if our file needs to have random name.
-        let name = if RANDOM_FILE_EXT.iter().any(|x| x == &extension) {
+
+        let name = if RANDOM_FILE_EXT.contains(&extension.as_str()) {
             nanoid::nanoid!(6, &nanoid::alphabet::SAFE)
         } else {
             file_name.to_owned()
@@ -171,15 +173,16 @@ async fn gen_upload_file(
 }
 
 // check_name checks to make sure we have a multipart name.
-fn check_name(field: &ContentDisposition, name: &str) -> Result<bool, Box<dyn std::error::Error>> {
+fn check_name(field: &ContentDisposition, name: &str) -> anyhow::Result<bool> {
     if field
         .get_name()
-        .ok_or_else(|| "error getting multipart name")?
-        != name
+        .ok_or_else(|| anyhow::anyhow!("error getting multipart name"))?
+        == name
     {
-        return Ok(false);
+        Ok(true)
+    } else {
+        Ok(false)
     }
-    Ok(true)
 }
 
 // Checks headers to see if key is valid.

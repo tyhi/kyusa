@@ -86,7 +86,7 @@ pub async fn get_metrics(db: Data<Db>) -> Result<models::Metrics> {
             let (_, file) = file?;
             let file = bincode::deserialize::<models::File>(&file)?;
             metrics.files += 1;
-            metrics.stored += file.filesize;
+            metrics.stored += &file.filesize;
             metrics.served += file.filesize * file.downloads as f64;
         }
         for user in db.scan_prefix("api_") {
@@ -101,7 +101,6 @@ pub async fn get_metrics(db: Data<Db>) -> Result<models::Metrics> {
 pub async fn inc_file(db: Data<Db>, path: String) -> Result<()> {
     spawn_blocking(move || -> Result<()> {
         db.fetch_and_update(format!("file_{}", path), increment)?;
-
         Ok(())
     })
     .await??;
@@ -111,11 +110,14 @@ pub async fn inc_file(db: Data<Db>, path: String) -> Result<()> {
 fn increment(old: Option<&[u8]>) -> Option<Vec<u8>> {
     match old {
         Some(bytes) => {
-            let mut file = bincode::deserialize::<models::File>(bytes).expect("");
+            let mut file = bincode::deserialize::<models::File>(bytes).expect(
+                "FATAL ERROR: this should never happen. If it did please contact project owner.",
+            );
             file.downloads += 1;
-            Some(bincode::serialize(&file).expect(""))
+            Some(bincode::serialize(&file).expect(
+                "FATAL ERROR: this should never happen. If it did please contact project owner.",
+            ))
         },
-
         None => None,
     }
 }

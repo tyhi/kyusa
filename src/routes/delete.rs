@@ -62,17 +62,22 @@ pub async fn delete(
     Ok(HttpResponse::Ok().body("file deleted"))
 }
 
-pub async fn del_file(file_path: &std::path::Path) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn del_file(file_path: &std::path::Path) -> anyhow::Result<()> {
     fs::remove_file(file_path).await?;
 
     if file_path
         .parent()
-        .ok_or_else(|| "no parent directory")?
+        .ok_or_else(|| anyhow::anyhow!("no parent directory"))?
         .read_dir()?
         .next()
         .is_none()
     {
-        fs::remove_dir(file_path.parent().ok_or_else(|| "no parent directory")?).await?;
+        fs::remove_dir(
+            file_path
+                .parent()
+                .ok_or_else(|| anyhow::anyhow!("no parent directory"))?,
+        )
+        .await?;
     }
     Ok(())
 }

@@ -5,11 +5,7 @@ pub struct PurgeFiles<'a> {
     pub files: Vec<&'a str>,
 }
 
-pub async fn purge(
-    api_key: &str,
-    zone_id: &str,
-    url: &str,
-) -> Result<reqwest::StatusCode, Box<dyn std::error::Error>> {
+pub async fn purge(api_key: &str, zone_id: &str, url: &str) -> anyhow::Result<reqwest::StatusCode> {
     Ok(reqwest::Client::new()
         .post(&format!(
             "https://api.cloudflare.com/client/v4/zones/{}/purge_cache",
