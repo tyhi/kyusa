@@ -155,18 +155,18 @@ async fn gen_upload_file(content: &ContentDisposition) -> anyhow::Result<NamedRe
         // Creating our random folder name.
         let folder_dir = nanoid::nanoid!(3, &nanoid::alphabet::SAFE);
 
-        let path = format!("./uploads/{}/{}.{}", folder_dir, name, extension);
+        let path = format!("./uploads/{}/{}.{}", &folder_dir, &name, &extension);
 
         if !std::path::Path::new(&path).exists() {
-            if !std::path::Path::new(&format!("./uploads/{}", folder_dir)).exists() {
-                fs::create_dir_all(format!("./uploads/{}", folder_dir)).await?;
+            if !std::path::Path::new(&format!("./uploads/{}", &folder_dir)).exists() {
+                fs::create_dir_all(format!("./uploads/{}", &folder_dir)).await?;
             }
 
             return Ok(NamedReturn {
                 new_path: path,
-                temp_path: format!("./uploads/{}/{}.{}.~tmp", folder_dir, name, extension),
-                uri: format!("/{}/{}", folder_dir, name),
-                ext: extension.to_string(),
+                temp_path: format!("./uploads/{}/{}.{}.~tmp", &folder_dir, &name, &extension),
+                uri: format!("/{}/{}", &folder_dir, &name),
+                ext: extension,
             });
         }
     }
@@ -189,10 +189,9 @@ fn check_name(field: &ContentDisposition, name: &str) -> anyhow::Result<bool> {
 async fn check_header(db: Data<sled::Db>, header: &HeaderMap) -> anyhow::Result<models::User> {
     let apikey = header
         .get("apikey")
-        .map_or("", |s| s.to_str().unwrap_or(""))
-        .to_string();
+        .map_or_else(|| "", |s| s.to_str().unwrap_or(""));
 
-    if db::check_api(Data::clone(&db), apikey.clone()).await? {
+    if db::check_api(Data::clone(&db), apikey).await? {
         return Ok(db::get_user(db, apikey).await?);
     }
 
