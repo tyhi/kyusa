@@ -101,62 +101,8 @@ pub async fn upload(
         // TODO: insert file into database and return id.
 
         return Ok(HttpResponse::Ok().json(&UploadResp {
-            url: format!("{}/{}.{}", domain, ENCODER.encode_url(id as usize, 5), ext),
+            url: format!("{}/{}.{}", domain, ENCODER.encode_url(id, 5), ext),
         }));
     }
     Err(error::ErrorBadRequest("no files uploaded"))
-}
-
-// Takes the input file name and generates the correct paths needed.
-async fn gen_upload_file(content: &ContentDisposition) -> anyhow::Result<NamedReturn> {
-    let filen = str::replace(
-        content
-            .get_filename()
-            .ok_or_else(|| anyhow::anyhow!("error getting filename"))?,
-        " ",
-        "_",
-    );
-
-    let path = std::path::Path::new(&filen);
-
-    let file_name = path
-        .file_stem()
-        .and_then(std::ffi::OsStr::to_str)
-        .ok_or_else(|| anyhow::anyhow!("no file_name"))?;
-
-    let extension = path
-        .extension()
-        .and_then(std::ffi::OsStr::to_str)
-        .ok_or_else(|| anyhow::anyhow!("no extension"))?
-        .to_ascii_lowercase();
-
-    // This loop makes sure that we don't have collision in file names.
-    loop {
-        // Cheaking to see if our file needs to have random name.
-
-        let name = if RANDOM_FILE_EXT.contains(&extension.as_str()) {
-            // TODO: placeholder.
-            String::new()
-        } else {
-            file_name.to_owned()
-        };
-
-        // Creating our random folder name.
-        let folder_dir = String::new();
-
-        let path = format!("./uploads/{}/{}.{}", &folder_dir, &name, &extension);
-
-        if !std::path::Path::new(&path).exists() {
-            if !std::path::Path::new(&format!("./uploads/{}", &folder_dir)).exists() {
-                fs::create_dir_all(format!("./uploads/{}", &folder_dir)).await?;
-            }
-
-            return Ok(NamedReturn {
-                new_path: path,
-                temp_path: format!("./uploads/{}/{}.{}.~tmp", &folder_dir, &name, &extension),
-                uri: format!("/{}/{}", &folder_dir, &name),
-                ext: extension,
-            });
-        }
-    }
 }

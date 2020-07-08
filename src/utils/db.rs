@@ -54,14 +54,3 @@ pub async fn get(id: i64, pg: Data<PgPool>) -> Result<File> {
 
     Ok(resp)
 }
-
-pub async fn delete_file(id: i64, pg: Data<PgPool>) -> Result<()> {
-    let mut tx = pg.begin().await?;
-
-    sqlx::query!(r#"UPDATE files SET deleted = TRUE WHERE id = $1"#, id)
-        .execute(&mut tx)
-        .await?;
-
-    tx.commit().await?;
-    Ok(())
-}

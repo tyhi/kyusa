@@ -25,7 +25,7 @@ pub async fn serve(info: web::Path<FilePath>, db: Data<PgPool>) -> Result<NamedF
         .map_or_else(|| "".to_string(), std::string::ToString::to_string);
 
     // Get file from database
-    let file = db::get(ENCODER.decode_url(path.clone()) as i64, db)
+    let file = db::get(ENCODER.decode_url(path.clone()).unwrap() as i64, db)
         .await
         .map_err(ErrorInternalServerError)?;
 
