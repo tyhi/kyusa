@@ -1,8 +1,6 @@
 use crate::utils::ENCODER;
 use actix_multipart::{Field, Multipart};
-use actix_web::{
-    error, http::header::ContentDisposition, post, web::Data, HttpRequest, HttpResponse, Result,
-};
+use actix_web::{error, post, web::Data, HttpRequest, HttpResponse, Result};
 use futures::{StreamExt, TryStreamExt};
 use serde::Serialize;
 use sqlx::PgPool;
@@ -101,7 +99,7 @@ pub async fn upload(
         // TODO: insert file into database and return id.
 
         return Ok(HttpResponse::Ok().json(&UploadResp {
-            url: format!("{}/{}.{}", domain, ENCODER.encode_url(id, 5), ext),
+            url: format!("{}/{}.{}", domain, ENCODER.encode_url(id, 1), ext),
         }));
     }
     Err(error::ErrorBadRequest("no files uploaded"))

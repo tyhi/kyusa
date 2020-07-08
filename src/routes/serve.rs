@@ -1,7 +1,7 @@
 use crate::utils::{db, ENCODER};
 use actix_files::NamedFile;
 use actix_web::{
-    error::ErrorInternalServerError,
+    error::{ErrorInternalServerError, ErrorNotFound},
     get,
     http::header::{ContentDisposition, DispositionParam, DispositionType},
     web,
@@ -27,7 +27,14 @@ pub async fn serve(info: web::Path<FilePath>, db: Data<PgPool>) -> Result<NamedF
     // Get file from database
     let file = db::get(ENCODER.decode_url(path.clone()).unwrap() as i64, db)
         .await
-        .map_err(ErrorInternalServerError)?;
+        .map_err(ErrorInternalServerError)?
+        .ok_or_else(|| ErrorNotFound("file does not exist"))?;
+
+    if file.deleted {
+        return Err(ErrorNotFound(
+            "the file you are trying to access has been deleted from the server.",
+        ));
+    }
 
     let dis = ContentDisposition {
         disposition: DispositionType::Inline,

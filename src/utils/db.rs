@@ -30,6 +30,18 @@ pub struct Metrics {
 pub async fn insert(rqe: FileRequest, pg: Data<PgPool>) -> Result<i64> {
     let mut tx = pg.begin().await?;
 
+    let e = sqlx::query_as!(File, r#"SELECT * FROM files WHERE hash = $1"#, rqe.hash)
+        .fetch_optional(&mut tx)
+        .await?;
+
+    if let Some(e) = e {
+        if !e.deleted {
+            return Ok(e.id);
+        }
+        // TODO: Delete entry in database to allow reuploading of the same file
+        // after it was deleted.
+    }
+
     let resp = sqlx::query!(
         r#"INSERT INTO files (hash, ext, ip, mime) VALUES ($1, $2, $3, $4) RETURNING id"#,
         rqe.hash,
@@ -45,11 +57,11 @@ pub async fn insert(rqe: FileRequest, pg: Data<PgPool>) -> Result<i64> {
     Ok(resp.id)
 }
 
-pub async fn get(id: i64, pg: Data<PgPool>) -> Result<File> {
+pub async fn get(id: i64, pg: Data<PgPool>) -> Result<Option<File>> {
     let mut tx = pg.begin().await?;
 
     let resp = sqlx::query_as!(File, r#"SELECT * FROM files WHERE id = $1"#, id)
-        .fetch_one(&mut tx)
+        .fetch_optional(&mut tx)
         .await?;
 
     Ok(resp)
