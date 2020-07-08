@@ -1,26 +1,41 @@
-use crate::utils::db;
+use crate::utils::{db, ENCODER};
 use actix_files::NamedFile;
-use actix_web::{error, get, web, web::Data, Result};
+use actix_web::{
+    error::ErrorInternalServerError,
+    get,
+    http::header::{ContentDisposition, DispositionParam, DispositionType},
+    web,
+    web::Data,
+    Result,
+};
 use serde::Deserialize;
+use sqlx::PgPool;
+use std::{ffi::OsStr, path::Path};
 
 #[derive(Deserialize)]
 pub struct FilePath {
-    pub folder: String,
     pub file: String,
 }
 
-#[get("/{folder}/{file}")]
-pub async fn serve(info: web::Path<FilePath>, db: Data<sled::Db>) -> Result<NamedFile> {
-    if !std::path::Path::new(&format!("./uploads/{}/{}", info.folder, info.file)).exists() {
-        return Err(error::ErrorNotFound("file does not exist"));
-    }
+#[get("/{file}")]
+pub async fn serve(info: web::Path<FilePath>, db: Data<PgPool>) -> Result<NamedFile> {
+    let path = Path::new(&info.file)
+        .file_stem()
+        .and_then(OsStr::to_str)
+        .map_or_else(|| "".to_string(), std::string::ToString::to_string);
 
-    db::inc_file(db, format!("/{}/{}", info.folder, info.file))
+    // Get file from database
+    let file = db::get(ENCODER.decode_url(path.clone()) as i64, db)
         .await
-        .map_err(|_| error::ErrorNotFound("file does not exist"))?;
+        .map_err(ErrorInternalServerError)?;
 
-    Ok(NamedFile::open(format!(
-        "./uploads/{}/{}",
-        info.folder, info.file
-    ))?)
+    let dis = ContentDisposition {
+        disposition: DispositionType::Inline,
+        parameters: vec![DispositionParam::Filename(format!("{}.{}", path, file.ext))],
+    };
+
+    let e = NamedFile::open(format!("./uploads/{}", file.hash))?
+        .set_content_disposition(dis)
+        .set_content_type(file.mime.parse().map_err(ErrorInternalServerError)?);
+    Ok(e)
 }

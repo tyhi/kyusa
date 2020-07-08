@@ -5,7 +5,11 @@
     clippy::implicit_return,
     clippy::float_arithmetic,
     clippy::panic,
-    clippy::result_expect_used,
+    clippy::expect_used,
+    clippy::future_not_send,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::as_conversions,
     dead_code
 )]
 
@@ -24,48 +28,15 @@ pub mod built_info {
     include!(concat!(env!("OUT_DIR"), "/built.rs"));
 }
 
-#[derive(Clone)]
-pub struct Settings {
-    pub multipart_name: String,
-    pub cloudflare_details: Option<Cloudflare>,
-}
-
-#[derive(Clone)]
-pub struct Cloudflare {
-    pub cloudflare_api: String,
-    pub cloudflare_zone: String,
-}
-
 async fn p404() -> &'static str { "this resource does not exist." }
 
 #[actix_rt::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
 
-    let db = sled::Config::new()
-        .use_compression(true)
-        .path("./db")
-        .open()?;
-
-    db.len();
-
-    first_run_check(web::Data::new(db.clone())).await?;
-
-    let cloudflare: Option<Cloudflare>;
-
-    if env::var("KYUSA_CLOUDFLARE")? == "true" {
-        cloudflare = Some(Cloudflare {
-            cloudflare_zone: env::var("CLOUDFLARE_ZONE")?,
-            cloudflare_api: env::var("CLOUDFLARE_API")?,
-        })
-    } else {
-        cloudflare = None;
-    }
-
-    let settings = Settings {
-        multipart_name: env::var("KYUSA_MULTIPARTNAME")?,
-        cloudflare_details: cloudflare,
-    };
+    let conn_str =
+        std::env::var("DATABASE_URL").expect("Env var DATABASE_URL is required for this example.");
+    let pool = sqlx::PgPool::new(&conn_str).await?;
 
     if !std::path::Path::new("./uploads").exists() {
         std::fs::create_dir_all("./uploads")?;
@@ -77,8 +48,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     actix_web::HttpServer::new(move || {
         actix_web::App::new()
-            .data(settings.clone())
-            .data(db.clone())
+            .data(pool.clone())
             .service(routes::routes())
             .default_service(web::resource("").route(web::get().to(p404)))
     })
@@ -86,39 +56,4 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .run()
     .await?;
     Ok(())
-}
-
-#[allow(clippy::print_stdout)]
-async fn first_run_check(db: web::Data<sled::Db>) -> anyhow::Result<()> {
-    let m = utils::db::get_metrics(db.clone()).await?;
-    if m.users == 0 {
-        println!("Detected first run, setting up default admin account.");
-        println!("Enter username:");
-        let username = get_input();
-
-        println!("Enter email:");
-        let email = get_input();
-
-        let user = utils::models::User {
-            username,
-            email,
-            apikey: nanoid::nanoid!(24, &nanoid::alphabet::SAFE),
-            ipaddr: "NA".to_string(),
-            admin: true,
-        };
-
-        println!("{}", format!("\nHere is your apikey: {}", user.apikey));
-
-        utils::db::insert_user(db, user).await?;
-    }
-
-    Ok(())
-}
-
-fn get_input() -> String {
-    let mut s = String::new();
-    std::io::stdin()
-        .read_line(&mut s)
-        .expect("error reading stdin");
-    s.trim().to_string()
 }

@@ -1,11 +1,7 @@
-use actix_web::{get, web, Result, Scope};
-use std::str::from_utf8;
+use actix_web::{get, web, Scope};
 
-pub mod delete;
 pub mod serve;
-pub mod stats;
 pub mod upload;
-pub mod users;
 
 #[get("")]
 pub async fn index() -> &'static str {
@@ -18,11 +14,6 @@ pub async fn index() -> &'static str {
 pub fn routes() -> Scope {
     web::scope("/")
         .service(index)
-        .service(delete::delete)
-        .service(stats::stats)
         .service(upload::upload)
-        .service(users::register)
-        .service(users::del_user)
-        .service(users::get_user_stats)
         .service(serve::serve)
 }
