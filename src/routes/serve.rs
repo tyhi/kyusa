@@ -25,10 +25,15 @@ pub async fn serve(info: web::Path<FilePath>, db: Data<PgPool>) -> Result<NamedF
         .map_or_else(|| "".to_string(), std::string::ToString::to_string);
 
     // Get file from database
-    let file = db::get(ENCODER.decode_url(path.clone()).unwrap() as i64, db)
-        .await
-        .map_err(ErrorInternalServerError)?
-        .ok_or_else(|| ErrorNotFound("file does not exist"))?;
+    let file = db::get(
+        ENCODER
+            .decode_url(path.clone())
+            .ok_or_else(|| ErrorNotFound("invalid url"))? as i64,
+        db,
+    )
+    .await
+    .map_err(ErrorInternalServerError)?
+    .ok_or_else(|| ErrorNotFound("file does not exist"))?;
 
     if file.deleted {
         return Err(ErrorNotFound(
@@ -36,13 +41,11 @@ pub async fn serve(info: web::Path<FilePath>, db: Data<PgPool>) -> Result<NamedF
         ));
     }
 
-    let dis = ContentDisposition {
-        disposition: DispositionType::Inline,
-        parameters: vec![DispositionParam::Filename(format!("{}.{}", path, file.ext))],
-    };
-
     let e = NamedFile::open(format!("./uploads/{}", file.hash))?
-        .set_content_disposition(dis)
+        .set_content_disposition(ContentDisposition {
+            disposition: DispositionType::Inline,
+            parameters: vec![DispositionParam::Filename(format!("{}.{}", path, file.ext))],
+        })
         .set_content_type(file.mime.parse().map_err(ErrorInternalServerError)?);
     Ok(e)
 }

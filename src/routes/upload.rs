@@ -75,7 +75,7 @@ pub async fn upload(
                 ext: ext.clone(),
                 ip: request
                     .connection_info()
-                    .remote()
+                    .realip_remote_addr()
                     .unwrap_or("")
                     .split(':')
                     .next()

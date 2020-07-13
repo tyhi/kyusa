@@ -15,6 +15,7 @@
 
 use actix_web::web;
 use dotenv::dotenv;
+use sqlx::postgres::PgPoolOptions;
 use std::env;
 
 mod routes;
@@ -31,7 +32,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let conn_str =
         std::env::var("DATABASE_URL").expect("Env var DATABASE_URL is required for this example.");
-    let pool = sqlx::PgPool::new(&conn_str).await?;
+    let pool = PgPoolOptions::new(&conn_str)?.connect().await?;
 
     if !std::path::Path::new("./uploads").exists() {
         std::fs::create_dir_all("./uploads")?;
@@ -39,6 +40,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     actix_web::HttpServer::new(move || {
         actix_web::App::new()
+            .wrap(actix_web::middleware::Compress::default())
             .data(pool.clone())
             .service(routes::routes())
             .default_service(web::resource("").route(web::get().to(p404)))
