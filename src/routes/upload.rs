@@ -12,15 +12,6 @@ struct UploadResp {
     url: String,
 }
 
-struct NamedReturn {
-    new_path: String,
-    temp_path: String,
-    uri: String,
-    ext: String,
-}
-
-const RANDOM_FILE_EXT: &[&str] = &["png", "jpeg", "jpg", "webm", "gif", "avi", "mp4"];
-
 #[allow(clippy::cast_precision_loss, clippy::as_conversions)]
 #[post("")]
 pub async fn upload(

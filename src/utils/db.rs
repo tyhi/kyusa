@@ -21,12 +21,6 @@ pub struct FileRequest {
     pub ip: String,
 }
 
-pub struct Metrics {
-    pub files: i64,
-    pub served: f64,
-    pub stored: f64,
-}
-
 pub async fn insert(rqe: FileRequest, pg: Data<PgPool>) -> Result<i64> {
     let mut tx = pg.begin().await?;
 

@@ -9,8 +9,7 @@
     clippy::future_not_send,
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
-    clippy::as_conversions,
-    dead_code
+    clippy::as_conversions
 )]
 
 use actix_web::web;
