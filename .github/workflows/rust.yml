@@ -52,29 +52,3 @@ jobs:
         with:
           command: test
           args: --no-default-features
-
-  lint:
-    name: Rustfmt / Clippy
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v1
-        with:
-          submodules: recursive
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly
-          components: rustfmt, clippy
-
-      - name: Fmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: +nightly --all -- --check
-
-      - name: Clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: +nightly clippy
