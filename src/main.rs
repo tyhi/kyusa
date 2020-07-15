@@ -25,7 +25,7 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 async fn p404() -> &'static str { "this resource does not exist." }
 
-#[actix_rt::main]
+#[actix_web::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
 
