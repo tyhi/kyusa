@@ -28,7 +28,7 @@ pub async fn serve(info: web::Path<FilePath>, db: Data<PgPool>) -> Result<NamedF
     let file = db::get(
         ENCODER
             .decode_url(path.clone())
-            .ok_or_else(|| ErrorNotFound("invalid url"))? as i64,
+            .map_err(|_| ErrorNotFound("invalid url"))? as i64,
         db,
     )
     .await

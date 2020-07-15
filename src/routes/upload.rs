@@ -99,7 +99,14 @@ pub async fn upload(
         // TODO: insert file into database and return id.
 
         return Ok(HttpResponse::Ok().json(&UploadResp {
-            url: format!("{}/{}.{}", domain, ENCODER.encode_url(id, 1), ext),
+            url: format!(
+                "{}/{}.{}",
+                domain,
+                ENCODER
+                    .encode_url(id, 1)
+                    .map_err(actix_web::error::ErrorInternalServerError)?,
+                ext
+            ),
         }));
     }
     Err(error::ErrorBadRequest("no files uploaded"))

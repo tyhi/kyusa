@@ -32,7 +32,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let conn_str =
         std::env::var("DATABASE_URL").expect("Env var DATABASE_URL is required for this example.");
-    let pool = PgPoolOptions::new(&conn_str)?.connect().await?;
+    let pool = PgPoolOptions::new().connect(&conn_str).await?;
 
     if !std::path::Path::new("./uploads").exists() {
         std::fs::create_dir_all("./uploads")?;
