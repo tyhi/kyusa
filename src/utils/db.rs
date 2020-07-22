@@ -1,9 +1,7 @@
 use actix_web::web::Data;
-use anyhow::Result;
-use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 
-#[derive(Serialize, Deserialize)]
+type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 pub struct File {
     pub id: i64,
     pub hash: String,
@@ -12,8 +10,6 @@ pub struct File {
     pub mime: String,
     pub deleted: bool,
 }
-
-#[derive(Serialize, Deserialize)]
 pub struct FileRequest {
     pub hash: String,
     pub ext: String,

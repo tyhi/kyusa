@@ -1,6 +1,8 @@
 #![warn(clippy::all, clippy::pedantic, clippy::nursery)]
 #![allow(clippy::future_not_send)]
 
+type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+
 use actix_web::web;
 use dotenv::dotenv;
 use sqlx::postgres::PgPoolOptions;
@@ -13,7 +15,7 @@ mod utils;
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 #[actix_web::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> Result<()> {
     dotenv().ok();
 
     let conn_str =

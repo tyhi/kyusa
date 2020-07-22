@@ -7,18 +7,11 @@ use actix_web::{
     web::{Data, Path},
     Result,
 };
-use serde::Deserialize;
 use sqlx::PgPool;
 
-#[derive(Deserialize)]
-pub struct FilePath {
-    pub file: String,
-}
-
 #[get("/{file}")]
-pub async fn serve(info: Path<FilePath>, db: Data<PgPool>) -> Result<NamedFile> {
+pub async fn serve(info: Path<String>, db: Data<PgPool>) -> Result<NamedFile> {
     let id = info
-        .file
         .split('.')
         .next()
         .ok_or_else(|| ErrorNotFound("invalid url"))?;

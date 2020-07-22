@@ -11,12 +11,10 @@ repository = "https://github.com/tyhi/kyusa"
 actix-files = "0.3.0-beta.1"
 actix-multipart = "0.3.0-beta.1"
 actix-web = "3.0.0-beta.1"
-anyhow = "1.0.31"
 dotenv = "0.15.0"
 futures = "0.3.5"
 mimalloc = { version = "0.1.19", default-features = false }
 serde = "1.0.114"
-serde_json = "1.0.56"
 tokio = { version = "0.2.22", features = [ "fs", "macros" ] }
 sqlx = { git = "https://github.com/launchbadge/sqlx", default-features = false, features = [ "runtime-tokio", "macros", "postgres", "offline" ] }
 short_url = "0.1.0"
