@@ -32,8 +32,6 @@ pub async fn insert(rqe: FileRequest, pg: Data<PgPool>) -> Result<i64> {
         if !e.deleted {
             return Ok(e.id);
         }
-        // TODO: Delete entry in database to allow reuploading of the same file
-        // after it was deleted.
     }
 
     let resp = sqlx::query!(

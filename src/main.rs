@@ -1,16 +1,5 @@
-#![warn(clippy::all, clippy::pedantic, clippy::nursery, clippy::restriction)]
-#![allow(
-    clippy::missing_docs_in_private_items,
-    clippy::integer_arithmetic,
-    clippy::implicit_return,
-    clippy::float_arithmetic,
-    clippy::panic,
-    clippy::expect_used,
-    clippy::future_not_send,
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    clippy::as_conversions
-)]
+#![warn(clippy::all, clippy::pedantic, clippy::nursery)]
+#![allow(clippy::future_not_send)]
 
 use actix_web::web;
 use dotenv::dotenv;
@@ -23,10 +12,8 @@ mod utils;
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-async fn p404() -> &'static str { "this resource does not exist." }
-
 #[actix_web::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> anyhow::Result<()> {
     dotenv().ok();
 
     let conn_str =
@@ -42,7 +29,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .wrap(actix_web::middleware::Compress::default())
             .data(pool.clone())
             .service(routes::routes())
-            .default_service(web::resource("").route(web::get().to(p404)))
+            .default_service(web::resource("").route(
+                web::get().to(|| {
+                    actix_web::HttpResponse::NotFound().body("this resource does not exist.")
+                }),
+            ))
     })
     .bind(format!("0.0.0.0:{}", env::var("KYUSA_PORT")?))?
     .run()

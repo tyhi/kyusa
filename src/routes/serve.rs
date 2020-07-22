@@ -4,13 +4,11 @@ use actix_web::{
     error::{ErrorInternalServerError, ErrorNotFound},
     get,
     http::header::{ContentDisposition, DispositionParam, DispositionType},
-    web,
-    web::Data,
+    web::{Data, Path},
     Result,
 };
 use serde::Deserialize;
 use sqlx::PgPool;
-use std::{ffi::OsStr, path::Path};
 
 #[derive(Deserialize)]
 pub struct FilePath {
@@ -18,16 +16,17 @@ pub struct FilePath {
 }
 
 #[get("/{file}")]
-pub async fn serve(info: web::Path<FilePath>, db: Data<PgPool>) -> Result<NamedFile> {
-    let path = Path::new(&info.file)
-        .file_stem()
-        .and_then(OsStr::to_str)
-        .map_or_else(|| "".to_string(), std::string::ToString::to_string);
+pub async fn serve(info: Path<FilePath>, db: Data<PgPool>) -> Result<NamedFile> {
+    let id = info
+        .file
+        .split('.')
+        .next()
+        .ok_or_else(|| ErrorNotFound("invalid url"))?;
 
     // Get file from database
     let file = db::get(
         ENCODER
-            .decode_url(path.clone())
+            .decode_url(id.into())
             .map_err(|_| ErrorNotFound("invalid url"))? as i64,
         db,
     )
@@ -41,11 +40,10 @@ pub async fn serve(info: web::Path<FilePath>, db: Data<PgPool>) -> Result<NamedF
         ));
     }
 
-    let e = NamedFile::open(format!("./uploads/{}", file.hash))?
+    Ok(NamedFile::open(format!("./uploads/{}", file.hash))?
         .set_content_disposition(ContentDisposition {
             disposition: DispositionType::Inline,
-            parameters: vec![DispositionParam::Filename(format!("{}.{}", path, file.ext))],
+            parameters: vec![DispositionParam::Filename(format!("{}.{}", id, file.ext))],
         })
-        .set_content_type(file.mime.parse().map_err(ErrorInternalServerError)?);
-    Ok(e)
+        .set_content_type(file.mime.parse().map_err(ErrorInternalServerError)?))
 }

@@ -1,18 +1,20 @@
-use crate::utils::ENCODER;
+use crate::utils::{db, ENCODER};
 use actix_multipart::{Field, Multipart};
 use actix_web::{error, post, web::Data, HttpRequest, HttpResponse, Result};
 use futures::{StreamExt, TryStreamExt};
 use serde::Serialize;
 use sqlx::PgPool;
-use std::{ffi::OsStr, path::Path};
-use tokio::{fs, io::AsyncWriteExt};
+use std::string::ToString;
+use tokio::{
+    fs::{rename, File},
+    io::AsyncWriteExt,
+};
 
 #[derive(Serialize)]
 struct UploadResp {
     url: String,
 }
 
-#[allow(clippy::cast_precision_loss, clippy::as_conversions)]
 #[post("")]
 pub async fn upload(
     mut multipart: Multipart,
@@ -29,7 +31,7 @@ pub async fn upload(
         let tmp = fastrand::u16(..);
 
         // Create the temp. file to work with wile we iter over all the chunks.
-        let mut f = fs::File::create(format!("./uploads/{}.tmp", tmp)).await?;
+        let mut f = File::create(format!("./uploads/{}.tmp", tmp)).await?;
 
         // Create hasher
         let mut hasher = blake3::Hasher::new();
@@ -44,42 +46,32 @@ pub async fn upload(
         let hash = hasher.finalize().to_hex();
 
         // We rename in case something goes wrong.
-        fs::rename(
+        rename(
             &format!("./uploads/{}.tmp", tmp),
             &format!("./uploads/{}", hash),
         )
         .await?;
 
-        let ext = Path::new(
-            &content
-                .get_filename()
-                .map_or_else(|| "".to_string(), std::string::ToString::to_string),
-        )
-        .extension()
-        .and_then(OsStr::to_str)
-        .map_or_else(|| "".to_string(), std::string::ToString::to_string);
+        let ext = content
+            .get_filename()
+            .and_then(|f| f.split('.').last())
+            .map_or_else(|| "".to_string(), ToString::to_string);
 
-        let id = crate::utils::db::insert(
-            crate::utils::db::FileRequest {
+        let id = db::insert(
+            db::FileRequest {
                 mime: file.content_type().to_string(),
                 hash: hash.to_string(),
                 ext: ext.clone(),
                 ip: request
                     .connection_info()
                     .realip_remote_addr()
-                    .unwrap_or("")
-                    .split(':')
-                    .next()
-                    .unwrap_or("")
-                    .into(),
+                    .and_then(|f| f.split(':').next())
+                    .map_or_else(|| "".to_string(), ToString::to_string),
             },
             db,
         )
         .await
-        .map_err(|e| {
-            println!("{}", e);
-            actix_web::error::ParseError::Incomplete
-        })?;
+        .map_err(actix_web::error::ErrorInternalServerError)?;
 
         let domain = format!(
             "{}://{}",
@@ -87,9 +79,7 @@ pub async fn upload(
             request.connection_info().host()
         );
 
-        // TODO: insert file into database and return id.
-
-        return Ok(HttpResponse::Ok().json(&UploadResp {
+        return Ok(HttpResponse::Ok().json(UploadResp {
             url: format!(
                 "{}/{}.{}",
                 domain,
