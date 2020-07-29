@@ -36,7 +36,7 @@ pub async fn serve(info: Path<String>, db: Data<PgPool>) -> Result<NamedFile> {
     Ok(NamedFile::open(["./uploads/", &file.hash].concat())?
         .set_content_disposition(ContentDisposition {
             disposition: DispositionType::Inline,
-            parameters: vec![DispositionParam::Filename(format!("{}.{}", id, file.ext))],
+            parameters: vec![DispositionParam::Filename([id, ".", &file.ext].concat())],
         })
         .set_content_type(file.mime.parse().map_err(ErrorInternalServerError)?))
 }
