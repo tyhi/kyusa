@@ -1,5 +1,10 @@
 #![warn(clippy::all, clippy::pedantic, clippy::nursery)]
-#![allow(clippy::future_not_send)]
+#![allow(
+    clippy::future_not_send,
+    clippy::toplevel_ref_arg,
+    clippy::used_underscore_binding,
+    clippy::similar_names
+)]
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
