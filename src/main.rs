@@ -37,7 +37,7 @@ async fn main() -> Result<()> {
                 }),
             ))
     })
-    .bind(format!("0.0.0.0:{}", env::var("KYUSA_PORT")?))?
+    .bind(["0.0.0.0:", &env::var("KYUSA_PORT")?].concat())?
     .run()
     .await?;
     Ok(())

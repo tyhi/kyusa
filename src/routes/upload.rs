@@ -31,7 +31,7 @@ pub async fn upload(
         let tmp = fastrand::u16(..);
 
         // Create the temp. file to work with wile we iter over all the chunks.
-        let mut f = File::create(format!("./uploads/{}.tmp", tmp)).await?;
+        let mut f = File::create(["./uploads/", &tmp.to_string(), ".tmp"].concat()).await?;
 
         // Create hasher
         let mut hasher = blake3::Hasher::new();
@@ -47,8 +47,8 @@ pub async fn upload(
 
         // We rename in case something goes wrong.
         rename(
-            &format!("./uploads/{}.tmp", tmp),
-            &format!("./uploads/{}", hash),
+            ["./uploads/", &tmp.to_string(), ".tmp"].concat(),
+            ["./uploads/", &hash].concat(),
         )
         .await?;
 
@@ -73,21 +73,24 @@ pub async fn upload(
         .await
         .map_err(actix_web::error::ErrorInternalServerError)?;
 
-        let domain = format!(
-            "{}://{}",
+        let domain = [
             request.connection_info().scheme(),
-            request.connection_info().host()
-        );
+            "://",
+            request.connection_info().host(),
+        ]
+        .concat();
 
         return Ok(HttpResponse::Ok().json(UploadResp {
-            url: format!(
-                "{}/{}.{}",
-                domain,
-                ENCODER
+            url: [
+                &domain,
+                "/",
+                &ENCODER
                     .encode_url(id, 1)
                     .map_err(actix_web::error::ErrorInternalServerError)?,
-                ext
-            ),
+                ".",
+                &ext,
+            ]
+            .concat(),
         }));
     }
     Err(error::ErrorBadRequest("no files uploaded"))
