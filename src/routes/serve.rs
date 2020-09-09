@@ -7,10 +7,10 @@ use actix_web::{
     web::{Data, Path},
     Result,
 };
-use sqlx::PgPool;
+use sled::Tree;
 
 #[get("/{file}")]
-pub async fn serve(info: Path<String>, db: Data<PgPool>) -> Result<NamedFile> {
+pub async fn serve(info: Path<String>, db: Data<Tree>) -> Result<NamedFile> {
     let id = info
         .split('.')
         .next()
@@ -24,7 +24,6 @@ pub async fn serve(info: Path<String>, db: Data<PgPool>) -> Result<NamedFile> {
         db,
     )
     .await
-    .map_err(ErrorInternalServerError)?
     .ok_or_else(|| ErrorNotFound("file does not exist"))?;
 
     if file.deleted {

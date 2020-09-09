@@ -3,7 +3,7 @@ use actix_multipart::{Field, Multipart};
 use actix_web::{error, post, web::Data, HttpRequest, HttpResponse, Result};
 use futures::{StreamExt, TryStreamExt};
 use serde::Serialize;
-use sqlx::PgPool;
+use sled::Tree;
 use std::string::ToString;
 use tokio::{
     fs::{rename, File},
@@ -18,7 +18,7 @@ struct UploadResp {
 #[post("")]
 pub async fn upload(
     mut multipart: Multipart,
-    db: Data<PgPool>,
+    db: Data<Tree>,
     request: HttpRequest,
 ) -> Result<HttpResponse> {
     // Handle multipart upload(s) field
@@ -26,7 +26,7 @@ pub async fn upload(
         let mut file: Field = file;
         let content = file
             .content_disposition()
-            .ok_or_else(|| actix_web::error::ParseError::Incomplete)?;
+            .ok_or(actix_web::error::ParseError::Incomplete)?;
 
         let tmp = fastrand::u16(..);
 

@@ -10,7 +10,6 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 use actix_web::web;
 use dotenv::dotenv;
-use sqlx::postgres::PgPoolOptions;
 use std::env;
 
 mod routes;
@@ -23,9 +22,7 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 async fn main() -> Result<()> {
     dotenv().ok();
 
-    let conn_str =
-        std::env::var("DATABASE_URL").expect("Env var DATABASE_URL is required for this example.");
-    let pool = PgPoolOptions::new().connect(&conn_str).await?;
+    let sld = sled::open("./db").unwrap();
 
     if !std::path::Path::new("./uploads").exists() {
         std::fs::create_dir_all("./uploads")?;
@@ -34,7 +31,7 @@ async fn main() -> Result<()> {
     actix_web::HttpServer::new(move || {
         actix_web::App::new()
             .wrap(actix_web::middleware::Compress::default())
-            .data(pool.clone())
+            .data(sld.open_tree("files"))
             .service(routes::routes())
             .default_service(web::resource("").route(
                 web::get().to(|| {

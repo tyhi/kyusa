@@ -1,7 +1,10 @@
 use actix_web::web::Data;
-use sqlx::PgPool;
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use sled::{IVec, Tree};
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+
+#[derive(Serialize, Deserialize)]
 pub struct File {
     pub id: i64,
     pub hash: String,
@@ -10,6 +13,8 @@ pub struct File {
     pub mime: String,
     pub deleted: bool,
 }
+
+#[derive(Serialize, Deserialize)]
 pub struct FileRequest {
     pub hash: String,
     pub ext: String,
@@ -17,40 +22,46 @@ pub struct FileRequest {
     pub ip: String,
 }
 
-pub async fn insert(rqe: FileRequest, pg: Data<PgPool>) -> Result<i64> {
-    let mut tx = pg.begin().await?;
+pub async fn insert(rqe: FileRequest, db: Data<Tree>) -> Result<i64> {
+    if let Some(file) = get_hash(&rqe.hash, &db).await {
+        return Ok(file.id);
+    }
 
-    let e = sqlx::query_as_unchecked!(File, r#"SELECT * FROM files WHERE hash = $1"#, rqe.hash)
-        .fetch_optional(&mut tx)
-        .await?;
+    db.insert(
+        (db.len() + 1).to_be_bytes(),
+        bin(File {
+            id: (db.len() + 1) as i64,
+            hash: rqe.hash,
+            ext: rqe.ext,
+            ip: rqe.ip,
+            mime: rqe.mime,
+            deleted: false,
+        }),
+    )
+    .unwrap();
 
-    if let Some(e) = e {
-        if !e.deleted {
-            return Ok(e.id);
+    Ok(1)
+}
+
+pub async fn get_hash(hash: &str, db: &Data<Tree>) -> Option<File> {
+    for k in db.iter() {
+        if let Ok(file) = debin::<File>(&k.unwrap().1) {
+            if file.hash == hash {
+                return Some(file);
+            }
         }
     }
 
-    let resp = sqlx::query!(
-        r#"INSERT INTO files (hash, ext, ip, mime) VALUES ($1, $2, $3, $4) RETURNING id"#,
-        rqe.hash,
-        rqe.ext,
-        rqe.ip,
-        rqe.mime
-    )
-    .fetch_one(&mut tx)
-    .await?;
-
-    tx.commit().await?;
-
-    Ok(resp.id)
+    None
 }
 
-pub async fn get(id: i64, pg: Data<PgPool>) -> Result<Option<File>> {
-    let mut tx = pg.begin().await?;
+fn debin<T: DeserializeOwned>(i: &IVec) -> Result<T> { Ok(bincode::deserialize::<T>(i)?) }
+fn bin<T: Serialize>(s: T) -> Vec<u8> { bincode::serialize(&s).unwrap() }
 
-    let resp = sqlx::query_as_unchecked!(File, r#"SELECT * FROM files WHERE id = $1"#, id)
-        .fetch_optional(&mut tx)
-        .await?;
+pub async fn get(id: i64, pg: Data<Tree>) -> Option<File> {
+    if let Ok(Some(file)) = pg.get(id.to_be_bytes()) {
+        return Some(debin::<File>(&file).unwrap());
+    };
 
-    Ok(resp)
+    None
 }
