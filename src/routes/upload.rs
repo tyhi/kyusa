@@ -61,7 +61,7 @@ pub async fn upload(
             db::FileRequest {
                 mime: file.content_type().to_string(),
                 hash: hash.to_string(),
-                ext: ext.clone(),
+                ext: &ext,
                 ip: request
                     .connection_info()
                     .realip_remote_addr()
@@ -73,16 +73,11 @@ pub async fn upload(
         .await
         .map_err(actix_web::error::ErrorInternalServerError)?;
 
-        let domain = [
-            request.connection_info().scheme(),
-            "://",
-            request.connection_info().host(),
-        ]
-        .concat();
-
         return Ok(HttpResponse::Ok().json(UploadResp {
             url: [
-                &domain,
+                request.connection_info().scheme(),
+                "://",
+                request.connection_info().host(),
                 "/",
                 &ENCODER
                     .encode_url(id, 1)

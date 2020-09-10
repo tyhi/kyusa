@@ -15,24 +15,26 @@ pub struct File {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct FileRequest {
+pub struct FileRequest<'a> {
     pub hash: String,
-    pub ext: String,
+    pub ext: &'a str,
     pub mime: String,
     pub ip: String,
 }
 
-pub async fn insert(rqe: FileRequest, db: Data<Tree>) -> Result<i64> {
+pub async fn insert(rqe: FileRequest<'_>, db: Data<Tree>) -> Result<i64> {
     if let Some(file) = get_hash(&rqe.hash, &db).await {
         return Ok(file.id);
     }
 
+    let id = (db.len() + 1) as i64;
+
     db.insert(
         (db.len() + 1).to_be_bytes(),
         bin(File {
-            id: (db.len() + 1) as i64,
+            id,
             hash: rqe.hash,
-            ext: rqe.ext,
+            ext: rqe.ext.to_string(),
             ip: rqe.ip,
             mime: rqe.mime,
             deleted: false,
@@ -40,7 +42,7 @@ pub async fn insert(rqe: FileRequest, db: Data<Tree>) -> Result<i64> {
     )
     .unwrap();
 
-    Ok(1)
+    Ok(id)
 }
 
 pub async fn get_hash(hash: &str, db: &Data<Tree>) -> Option<File> {

@@ -11,10 +11,13 @@ use sled::Tree;
 
 #[get("/{file}")]
 pub async fn serve(info: Path<String>, db: Data<Tree>) -> Result<NamedFile> {
-    let id = info
-        .split('.')
-        .next()
-        .ok_or_else(|| ErrorNotFound("invalid url"))?;
+    let id = if info.contains('.') {
+        info.split('.')
+            .next()
+            .ok_or_else(|| ErrorNotFound("invalid url"))?
+    } else {
+        info.as_str()
+    };
 
     // Get file from database
     let file = db::get(
