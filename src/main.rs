@@ -27,7 +27,7 @@ async fn main() -> Result<()> {
     actix_web::HttpServer::new(move || {
         actix_web::App::new()
             .wrap(actix_web::middleware::Compress::default())
-            .data(sld.open_tree("files"))
+            .data(sld.open_tree("files").unwrap())
             .service(routes::routes())
             .default_service(web::resource("").route(
                 web::get().to(|| {
