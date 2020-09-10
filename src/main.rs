@@ -9,8 +9,6 @@
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 use actix_web::web;
-use dotenv::dotenv;
-use std::env;
 
 mod routes;
 mod utils;
@@ -20,8 +18,6 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 #[actix_web::main]
 async fn main() -> Result<()> {
-    dotenv().ok();
-
     let sld = sled::open("./db").unwrap();
 
     if !std::path::Path::new("./uploads").exists() {
@@ -39,7 +35,7 @@ async fn main() -> Result<()> {
                 }),
             ))
     })
-    .bind(["0.0.0.0:", &env::var("KYUSA_PORT")?].concat())?
+    .bind("0.0.0.0:3000")?
     .run()
     .await?;
     Ok(())
