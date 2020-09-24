@@ -3,7 +3,7 @@ use actix_multipart::{Field, Multipart};
 use actix_web::{error, post, web::Data, HttpRequest, HttpResponse, Result};
 use futures::{StreamExt, TryStreamExt};
 use serde::Serialize;
-use sled::Tree;
+use sled::Db;
 use std::string::ToString;
 use tokio::{
     fs::{rename, File},
@@ -18,7 +18,7 @@ struct UploadResp {
 #[post("")]
 pub async fn upload(
     mut multipart: Multipart,
-    db: Data<Tree>,
+    db: Data<Db>,
     request: HttpRequest,
 ) -> Result<HttpResponse> {
     // Handle multipart upload(s) field
@@ -57,36 +57,72 @@ pub async fn upload(
             .and_then(|f| f.split('.').last())
             .map_or_else(|| "".to_string(), ToString::to_string);
 
-        let id = db::insert(
-            db::FileRequest {
-                mime: file.content_type().to_string(),
-                hash: hash.to_string(),
-                ext: &ext,
-                ip: request
-                    .connection_info()
-                    .realip_remote_addr()
-                    .and_then(|f| f.split(':').next())
-                    .map_or_else(|| "".to_string(), ToString::to_string),
-            },
-            db,
-        )
-        .await
-        .map_err(actix_web::error::ErrorInternalServerError)?;
+        match file.content_type().type_() {
+            mime::IMAGE | mime::VIDEO | mime::AUDIO => {
+                let id = db::insert(
+                    db::FileRequest {
+                        mime: file.content_type().to_string(),
+                        hash: hash.to_string(),
+                        ext: &ext,
+                        ip: request
+                            .connection_info()
+                            .realip_remote_addr()
+                            .and_then(|f| f.split(':').next())
+                            .map_or_else(|| "".to_string(), ToString::to_string),
+                    },
+                    db.open_tree("files")
+                        .map_err(error::ErrorInternalServerError)?,
+                )
+                .await
+                .map_err(actix_web::error::ErrorInternalServerError)?;
 
-        return Ok(HttpResponse::Ok().json(UploadResp {
-            url: [
-                request.connection_info().scheme(),
-                "://",
-                request.connection_info().host(),
-                "/",
-                &ENCODER
-                    .encode_url(id, 1)
-                    .map_err(actix_web::error::ErrorInternalServerError)?,
-                ".",
-                &ext,
-            ]
-            .concat(),
-        }));
+                return Ok(HttpResponse::Ok().json(UploadResp {
+                    url: [
+                        request.connection_info().scheme(),
+                        "://",
+                        request.connection_info().host(),
+                        "/",
+                        &ENCODER
+                            .encode_url(id, 1)
+                            .map_err(actix_web::error::ErrorInternalServerError)?,
+                        ".",
+                        &ext,
+                    ]
+                    .concat(),
+                }));
+            },
+            _ => {
+                let id = db::insert_tmp(
+                    db::FileRequestTmp {
+                        mime: file.content_type().to_string(),
+                        hash: hash.to_string(),
+                        ext: &ext,
+                        ip: request
+                            .connection_info()
+                            .realip_remote_addr()
+                            .and_then(|f| f.split(':').next())
+                            .map_or_else(|| "".to_string(), ToString::to_string),
+                    },
+                    content.get_filename().unwrap(),
+                    db.open_tree("tmp")
+                        .map_err(error::ErrorInternalServerError)?,
+                )
+                .await
+                .map_err(actix_web::error::ErrorInternalServerError)?;
+
+                return Ok(HttpResponse::Ok().json(UploadResp {
+                    url: [
+                        request.connection_info().scheme(),
+                        "://",
+                        request.connection_info().host(),
+                        "/t/",
+                        &id,
+                    ]
+                    .concat(),
+                }));
+            },
+        }
     }
-    Err(error::ErrorBadRequest("no files uploaded"))
+
+    Err(error::ErrorNotImplemented("err"))
 }
