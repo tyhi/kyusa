@@ -38,16 +38,15 @@ pub async fn insert(rqe: FileRequest<'_>, db: Data<Tree>) -> Result<i64> {
             ip: rqe.ip,
             mime: rqe.mime,
             deleted: false,
-        }),
-    )
-    .unwrap();
+        })?,
+    )?;
 
     Ok(id)
 }
 
 pub async fn get_hash(hash: &str, db: &Data<Tree>) -> Option<File> {
     for k in db.iter() {
-        if let Ok(file) = debin::<File>(&k.unwrap().1) {
+        if let Ok(file) = debin::<File>(&k.ok()?.1) {
             if file.hash == hash {
                 return Some(file);
             }
@@ -58,11 +57,11 @@ pub async fn get_hash(hash: &str, db: &Data<Tree>) -> Option<File> {
 }
 
 fn debin<T: DeserializeOwned>(i: &IVec) -> Result<T> { Ok(bincode::deserialize::<T>(i)?) }
-fn bin<T: Serialize>(s: T) -> Vec<u8> { bincode::serialize(&s).unwrap() }
+fn bin<T: Serialize>(s: T) -> Result<Vec<u8>> { Ok(bincode::serialize(&s)?) }
 
 pub async fn get(id: i64, pg: Data<Tree>) -> Option<File> {
     if let Ok(Some(file)) = pg.get(id.to_be_bytes()) {
-        return Some(debin::<File>(&file).unwrap());
+        return Some(debin::<File>(&file).ok()?);
     };
 
     None
