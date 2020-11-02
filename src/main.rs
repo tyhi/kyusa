@@ -22,12 +22,9 @@ async fn main() -> Result<()> {
         std::fs::create_dir_all("./uploads")?;
     }
 
-    let sled = sled::open("./db").unwrap();
-
     actix_web::HttpServer::new(move || {
         actix_web::App::new()
             .wrap(actix_web::middleware::Compress::default())
-            .data(sled.clone())
             .service(routes::routes())
             .default_service(web::resource("").route(
                 web::get().to(|| {

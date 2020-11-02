@@ -13,5 +13,4 @@ pub fn routes() -> Scope {
         .service(index)
         .service(upload::upload)
         .service(serve::serve)
-        .service(serve::serve_tmp)
 }

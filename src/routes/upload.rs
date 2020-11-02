@@ -1,9 +1,8 @@
-use crate::utils::{db, ENCODER};
-use actix_multipart::{Field, Multipart};
-use actix_web::{error, post, web::Data, HttpRequest, HttpResponse, Result};
+use crate::utils::{db, db::SLED, ENCODER};
+use actix_multipart::Multipart;
+use actix_web::{error, post, HttpRequest, HttpResponse, Result};
 use futures::{StreamExt, TryStreamExt};
 use serde::Serialize;
-use sled::Db;
 use std::string::ToString;
 use tokio::{
     fs::{rename, File},
@@ -16,18 +15,9 @@ struct UploadResp {
 }
 
 #[post("")]
-pub async fn upload(
-    mut multipart: Multipart,
-    db: Data<Db>,
-    request: HttpRequest,
-) -> Result<HttpResponse> {
+pub async fn upload(mut multipart: Multipart, request: HttpRequest) -> Result<HttpResponse> {
     // Handle multipart upload(s) field
-    if let Ok(Some(file)) = multipart.try_next().await {
-        let mut file: Field = file;
-        let content = file
-            .content_disposition()
-            .ok_or(actix_web::error::ParseError::Incomplete)?;
-
+    if let Ok(Some(mut file)) = multipart.try_next().await {
         let tmp = fastrand::u16(..);
 
         // Create the temp. file to work with wile we iter over all the chunks.
@@ -52,29 +42,31 @@ pub async fn upload(
         )
         .await?;
 
-        let ext = content
+        let ext = file
+            .content_disposition()
+            .ok_or(actix_web::error::ParseError::Incomplete)?
             .get_filename()
             .and_then(|f| f.split('.').last())
             .map_or_else(|| "".to_string(), ToString::to_string);
 
         match file.content_type().type_() {
             mime::IMAGE | mime::VIDEO | mime::AUDIO => {
-                let id = db::insert(
-                    db::FileRequest {
-                        mime: file.content_type().to_string(),
-                        hash: hash.to_string(),
-                        ext: &ext,
-                        ip: request
-                            .connection_info()
-                            .realip_remote_addr()
-                            .and_then(|f| f.split(':').next())
-                            .map_or_else(|| "".to_string(), ToString::to_string),
-                    },
-                    db.open_tree("files")
-                        .map_err(error::ErrorInternalServerError)?,
-                )
-                .await
-                .map_err(actix_web::error::ErrorInternalServerError)?;
+                let mut df = db::File {
+                    id: None,
+                    deleted: false,
+                    mime: file.content_type().to_string(),
+                    hash: hash.to_string(),
+                    ext,
+                    ip: request
+                        .connection_info()
+                        .realip_remote_addr()
+                        .and_then(|f| f.split(':').next())
+                        .map_or_else(|| "".to_string(), ToString::to_string),
+                };
+                let id = SLED
+                    .insert(&mut df)
+                    .await
+                    .map_err(actix_web::error::ErrorInternalServerError)?;
 
                 return Ok(HttpResponse::Ok().json(UploadResp {
                     url: [
@@ -83,32 +75,32 @@ pub async fn upload(
                         request.connection_info().host(),
                         "/",
                         &ENCODER
-                            .encode_url(id, 1)
+                            .encode_url(id.ok_or(actix_web::error::ParseError::Incomplete)?, 1)
                             .map_err(actix_web::error::ErrorInternalServerError)?,
                         ".",
-                        &ext,
+                        &df.ext,
                     ]
                     .concat(),
                 }));
             },
             _ => {
-                let id = db::insert_tmp(
-                    db::FileRequestTmp {
-                        mime: file.content_type().to_string(),
-                        hash: hash.to_string(),
-                        ext: &ext,
-                        ip: request
-                            .connection_info()
-                            .realip_remote_addr()
-                            .and_then(|f| f.split(':').next())
-                            .map_or_else(|| "".to_string(), ToString::to_string),
-                    },
-                    content.get_filename().unwrap(),
-                    db.open_tree("tmp")
-                        .map_err(error::ErrorInternalServerError)?,
-                )
-                .await
-                .map_err(actix_web::error::ErrorInternalServerError)?;
+                let mut df = db::File {
+                    id: None,
+                    deleted: false,
+                    mime: file.content_type().to_string(),
+                    hash: hash.to_string(),
+                    ext,
+                    ip: request
+                        .connection_info()
+                        .realip_remote_addr()
+                        .and_then(|f| f.split(':').next())
+                        .map_or_else(|| "".to_string(), ToString::to_string),
+                };
+
+                let id = SLED
+                    .insert(&mut df)
+                    .await
+                    .map_err(actix_web::error::ErrorInternalServerError)?;
 
                 return Ok(HttpResponse::Ok().json(UploadResp {
                     url: [
@@ -116,7 +108,11 @@ pub async fn upload(
                         "://",
                         request.connection_info().host(),
                         "/t/",
-                        &id,
+                        &ENCODER
+                            .encode_url(id.unwrap(), 1)
+                            .map_err(actix_web::error::ErrorInternalServerError)?,
+                        ".",
+                        &df.ext,
                     ]
                     .concat(),
                 }));
