@@ -49,7 +49,7 @@ pub async fn upload(mut multipart: Multipart, request: HttpRequest) -> Result<Ht
             .and_then(|f| f.split('.').last())
             .map_or_else(|| "".to_string(), ToString::to_string);
 
-        match file.content_type().type_() {
+        return match file.content_type().type_() {
             mime::IMAGE | mime::VIDEO | mime::AUDIO => {
                 let mut df = db::File {
                     id: None,
@@ -68,7 +68,7 @@ pub async fn upload(mut multipart: Multipart, request: HttpRequest) -> Result<Ht
                     .await
                     .map_err(actix_web::error::ErrorInternalServerError)?;
 
-                return Ok(HttpResponse::Ok().json(UploadResp {
+                Ok(HttpResponse::Ok().json(UploadResp {
                     url: [
                         request.connection_info().scheme(),
                         "://",
@@ -81,7 +81,7 @@ pub async fn upload(mut multipart: Multipart, request: HttpRequest) -> Result<Ht
                         &df.ext,
                     ]
                     .concat(),
-                }));
+                }))
             },
             _ => {
                 let mut df = db::File {
@@ -102,7 +102,7 @@ pub async fn upload(mut multipart: Multipart, request: HttpRequest) -> Result<Ht
                     .await
                     .map_err(actix_web::error::ErrorInternalServerError)?;
 
-                return Ok(HttpResponse::Ok().json(UploadResp {
+                Ok(HttpResponse::Ok().json(UploadResp {
                     url: [
                         request.connection_info().scheme(),
                         "://",
@@ -115,9 +115,9 @@ pub async fn upload(mut multipart: Multipart, request: HttpRequest) -> Result<Ht
                         &df.ext,
                     ]
                     .concat(),
-                }));
+                }))
             },
-        }
+        };
     }
 
     Err(error::ErrorNotImplemented("err"))

@@ -13,7 +13,7 @@ pub struct SledD {
 
 impl SledD {
     pub fn new() -> Self {
-        SledD {
+        Self {
             db: sled::open("./db").unwrap(),
         }
     }
@@ -35,7 +35,7 @@ impl SledD {
 
     pub async fn get(&self, id: i64) -> Option<File> {
         if let Ok(Some(file)) = self.db.get(id.to_be_bytes()) {
-            return Some(debin::<File>(&file).ok()?);
+            return debin::<File>(&file).ok();
         };
 
         None
