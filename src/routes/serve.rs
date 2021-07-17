@@ -23,7 +23,7 @@ pub async fn serve(info: Path<String>) -> Result<NamedFile> {
         .get(
             ENCODER
                 .decode_url(id.into())
-                .map_err(|_| ErrorNotFound("invalid url"))? as i64,
+                .map_err(|_| ErrorNotFound("invalid url"))? as u64,
         )
         .await
         .ok_or_else(|| ErrorNotFound("file does not exist"))?;

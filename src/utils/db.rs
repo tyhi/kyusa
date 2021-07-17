@@ -1,5 +1,9 @@
 use once_cell::sync::Lazy;
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use rkyv::{
+    archived_root,
+    ser::{serializers::AllocSerializer, Serializer},
+    AlignedVec, Archive, Deserialize, Infallible, Serialize,
+};
 use sled::{Db, IVec};
 use std::sync::Arc;
 
@@ -18,24 +22,25 @@ impl SledD {
         }
     }
 
-    pub async fn insert(&self, rqe: &mut File) -> Result<Option<i64>> {
+    pub async fn insert(&self, rqe: &mut File) -> Result<Option<u64>> {
+        let r = "ok";
+
         if let Some(file) = self.get_hash(&rqe.hash).await {
             return Ok(file.id);
         }
 
-        let id = (self.db.len() + 1) as i64;
+        let id = self.db.generate_id()?;
 
         rqe.id = Some(id);
 
-        self.db
-            .insert((self.db.len() + 1).to_be_bytes(), bin(rqe)?)?;
+        self.db.insert((id).to_be_bytes(), bin(&*rqe)?.as_slice())?;
 
         Ok(Some(id))
     }
 
-    pub async fn get(&self, id: i64) -> Option<File> {
+    pub async fn get(&self, id: u64) -> Option<File> {
         if let Ok(Some(file)) = self.db.get(id.to_be_bytes()) {
-            return debin::<File>(&file).ok();
+            return debin(&file).ok();
         };
 
         None
@@ -43,20 +48,19 @@ impl SledD {
 
     pub async fn get_hash(&self, hash: &str) -> Option<File> {
         for k in self.db.iter() {
-            if let Ok(file) = debin::<File>(&k.ok()?.1) {
+            if let Ok(file) = debin(&k.ok()?.1) {
                 if file.hash == hash {
                     return Some(file);
                 }
             }
         }
-
         None
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Archive, Serialize, Deserialize)]
 pub struct File {
-    pub id: Option<i64>,
+    pub id: Option<u64>,
     pub hash: String,
     pub ext: String,
     pub ip: String,
@@ -64,5 +68,15 @@ pub struct File {
     pub deleted: bool,
 }
 
-fn debin<T: DeserializeOwned>(i: &IVec) -> Result<T> { Ok(bincode::deserialize::<T>(i)?) }
-fn bin<T: Serialize>(s: T) -> Result<Vec<u8>> { Ok(bincode::serialize(&s)?) }
+fn debin(i: &IVec) -> Result<File> {
+    let archived = unsafe { archived_root::<File>(&i[..]) };
+
+    Ok(archived.deserialize(&mut Infallible)?)
+}
+fn bin(s: &File) -> Result<AlignedVec> {
+    let mut ser = AllocSerializer::<256>::default();
+
+    ser.serialize_value(s)?;
+
+    Ok(ser.into_serializer().into_inner())
+}

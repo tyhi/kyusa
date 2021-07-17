@@ -4,6 +4,7 @@ pub mod serve;
 pub mod upload;
 
 #[get("")]
+#[allow(clippy::unused_async)]
 pub async fn index() -> &'static str {
     "welcome to kyusa, a fast file upload server built in rust."
 }

@@ -21,7 +21,7 @@ pub async fn upload(mut multipart: Multipart, request: HttpRequest) -> Result<Ht
         let tmp = fastrand::u16(..);
 
         // Create the temp. file to work with wile we iter over all the chunks.
-        let mut f = File::create(["./uploads/", &tmp.to_string(), ".tmp"].concat()).await?;
+        let mut f = File::create(format!("./uploads/{}.tmp", &tmp)).await?;
 
         // Create hasher
         let mut hasher = blake3::Hasher::new();
@@ -37,8 +37,8 @@ pub async fn upload(mut multipart: Multipart, request: HttpRequest) -> Result<Ht
 
         // We rename in case something goes wrong.
         rename(
-            ["./uploads/", &tmp.to_string(), ".tmp"].concat(),
-            ["./uploads/", &hash].concat(),
+            format!("./uploads/{}.tmp", &tmp),
+            format!("./uploads/{}", &hash),
         )
         .await?;
 
@@ -49,75 +49,34 @@ pub async fn upload(mut multipart: Multipart, request: HttpRequest) -> Result<Ht
             .and_then(|f| f.split('.').last())
             .map_or_else(|| "".to_string(), ToString::to_string);
 
-        return match file.content_type().type_() {
-            mime::IMAGE | mime::VIDEO | mime::AUDIO => {
-                let mut df = db::File {
-                    id: None,
-                    deleted: false,
-                    mime: file.content_type().to_string(),
-                    hash: hash.to_string(),
-                    ext,
-                    ip: request
-                        .connection_info()
-                        .realip_remote_addr()
-                        .and_then(|f| f.split(':').next())
-                        .map_or_else(|| "".to_string(), ToString::to_string),
-                };
-                let id = SLED
-                    .insert(&mut df)
-                    .await
-                    .map_err(actix_web::error::ErrorInternalServerError)?;
-
-                Ok(HttpResponse::Ok().json(UploadResp {
-                    url: [
-                        request.connection_info().scheme(),
-                        "://",
-                        request.connection_info().host(),
-                        "/",
-                        &ENCODER
-                            .encode_url(id.ok_or(actix_web::error::ParseError::Incomplete)?, 1)
-                            .map_err(actix_web::error::ErrorInternalServerError)?,
-                        ".",
-                        &df.ext,
-                    ]
-                    .concat(),
-                }))
-            },
-            _ => {
-                let mut df = db::File {
-                    id: None,
-                    deleted: false,
-                    mime: file.content_type().to_string(),
-                    hash: hash.to_string(),
-                    ext,
-                    ip: request
-                        .connection_info()
-                        .realip_remote_addr()
-                        .and_then(|f| f.split(':').next())
-                        .map_or_else(|| "".to_string(), ToString::to_string),
-                };
-
-                let id = SLED
-                    .insert(&mut df)
-                    .await
-                    .map_err(actix_web::error::ErrorInternalServerError)?;
-
-                Ok(HttpResponse::Ok().json(UploadResp {
-                    url: [
-                        request.connection_info().scheme(),
-                        "://",
-                        request.connection_info().host(),
-                        "/t/",
-                        &ENCODER
-                            .encode_url(id.unwrap(), 1)
-                            .map_err(actix_web::error::ErrorInternalServerError)?,
-                        ".",
-                        &df.ext,
-                    ]
-                    .concat(),
-                }))
-            },
+        let mut df = db::File {
+            id: None,
+            deleted: false,
+            mime: file.content_type().to_string(),
+            hash: hash.to_string(),
+            ext,
+            ip: request
+                .connection_info()
+                .realip_remote_addr()
+                .and_then(|f| f.split(':').next())
+                .map_or_else(|| "".to_string(), ToString::to_string),
         };
+        let id = SLED
+            .insert(&mut df)
+            .await
+            .map_err(actix_web::error::ErrorInternalServerError)?;
+
+        return Ok(HttpResponse::Ok().json(UploadResp {
+            url: format!(
+                "{}://{}/{}.{}",
+                request.connection_info().scheme(),
+                request.connection_info().host(),
+                &ENCODER
+                    .encode_url(id.ok_or(actix_web::error::ParseError::Incomplete)?, 1)
+                    .map_err(actix_web::error::ErrorInternalServerError)?,
+                &df.ext,
+            ),
+        }));
     }
 
     Err(error::ErrorNotImplemented("err"))

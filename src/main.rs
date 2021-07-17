@@ -21,11 +21,11 @@ async fn main() -> Result<()> {
         actix_web::App::new()
             .wrap(actix_web::middleware::Compress::default())
             .service(routes::routes())
-            .default_service(web::resource("").route(
-                web::get().to(|| {
+            .default_service(
+                web::route().to(|| {
                     actix_web::HttpResponse::NotFound().body("this resource does not exist.")
                 }),
-            ))
+            )
     })
     .bind("0.0.0.0:3000")?
     .run()
