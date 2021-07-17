@@ -22,20 +22,14 @@ impl SledD {
         }
     }
 
-    pub async fn insert(&self, rqe: &mut File) -> Result<Option<u64>> {
-        let r = "ok";
-
+    pub async fn insert(&self, rqe: &File) -> Result<u64> {
         if let Some(file) = self.get_hash(&rqe.hash).await {
             return Ok(file.id);
         }
 
-        let id = self.db.generate_id()?;
+        self.db.insert(rqe.id.to_be_bytes(), bin(rqe)?.as_slice())?;
 
-        rqe.id = Some(id);
-
-        self.db.insert((id).to_be_bytes(), bin(&*rqe)?.as_slice())?;
-
-        Ok(Some(id))
+        Ok(rqe.id)
     }
 
     pub async fn get(&self, id: u64) -> Option<File> {
@@ -56,11 +50,13 @@ impl SledD {
         }
         None
     }
+
+    pub fn get_id(&self) -> u64 { self.db.generate_id().unwrap() }
 }
 
 #[derive(Archive, Serialize, Deserialize)]
 pub struct File {
-    pub id: Option<u64>,
+    pub id: u64,
     pub hash: String,
     pub ext: String,
     pub ip: String,

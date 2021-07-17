@@ -18,10 +18,10 @@ struct UploadResp {
 pub async fn upload(mut multipart: Multipart, request: HttpRequest) -> Result<HttpResponse> {
     // Handle multipart upload(s) field
     if let Ok(Some(mut file)) = multipart.try_next().await {
-        let tmp = fastrand::u16(..);
+        let fid = SLED.get_id();
 
         // Create the temp. file to work with wile we iter over all the chunks.
-        let mut f = File::create(format!("./uploads/{}.tmp", &tmp)).await?;
+        let mut f = File::create(format!("./uploads/{}.tmp", fid)).await?;
 
         // Create hasher
         let mut hasher = blake3::Hasher::new();
@@ -37,7 +37,7 @@ pub async fn upload(mut multipart: Multipart, request: HttpRequest) -> Result<Ht
 
         // We rename in case something goes wrong.
         rename(
-            format!("./uploads/{}.tmp", &tmp),
+            format!("./uploads/{}.tmp", fid),
             format!("./uploads/{}", &hash),
         )
         .await?;
@@ -49,8 +49,8 @@ pub async fn upload(mut multipart: Multipart, request: HttpRequest) -> Result<Ht
             .and_then(|f| f.split('.').last())
             .map_or_else(|| "".to_string(), ToString::to_string);
 
-        let mut df = db::File {
-            id: None,
+        let df = db::File {
+            id: fid,
             deleted: false,
             mime: file.content_type().to_string(),
             hash: hash.to_string(),
@@ -62,7 +62,7 @@ pub async fn upload(mut multipart: Multipart, request: HttpRequest) -> Result<Ht
                 .map_or_else(|| "".to_string(), ToString::to_string),
         };
         let id = SLED
-            .insert(&mut df)
+            .insert(&df)
             .await
             .map_err(actix_web::error::ErrorInternalServerError)?;
 
@@ -72,7 +72,7 @@ pub async fn upload(mut multipart: Multipart, request: HttpRequest) -> Result<Ht
                 request.connection_info().scheme(),
                 request.connection_info().host(),
                 &ENCODER
-                    .encode_url(id.ok_or(actix_web::error::ParseError::Incomplete)?, 1)
+                    .encode_url(id, 1)
                     .map_err(actix_web::error::ErrorInternalServerError)?,
                 &df.ext,
             ),
